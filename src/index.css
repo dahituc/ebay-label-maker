@@ -110,17 +110,98 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   height: 20px;
 }
 
-/* Print Overrides for Label Gen */
+/* Label Output Styling */
+.labels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 90mm);
+  gap: 16px;
+}
+
+.label-item {
+  width: 90mm;
+  height: 30mm;
+  border: 1px dashed var(--border);
+  padding: 3mm;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.label-name {
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.label-address {
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.label-sku {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-align: right;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Print Overrides for 90x30 thermal layout */
 @media print {
+  @page {
+    size: 90mm 30mm;
+    margin: 0;
+  }
+  
   body {
     background: white;
+    margin: 0;
+    padding: 0;
   }
+  
   .sidebar, .print-hide {
     display: none !important;
   }
+  
   .main-content {
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible;
+  }
+
+  .labels-page {
+    margin: 0;
+    padding: 0;
+  }
+
+  .labels-grid {
+    display: block;
+    gap: 0;
+  }
+
+  .label-item {
+    width: 90mm;
+    height: 30mm;
+    border: none;
+    padding: 2mm 3mm;
+    margin: 0;
+    page-break-after: always;
+    background: transparent;
+    color: black;
+    border-radius: 0;
+  }
+
+  .label-sku {
+    color: #333;
   }
 }

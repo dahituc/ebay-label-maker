@@ -23,17 +23,17 @@
 
 ## Stage 4: Address Validation Pipeline & Testing
 
-- [ ] Create `src/services/addressValidator.js`. Implement a local JavaScript sanity check that verifies major Australian States against numeric postcode ranges.
-- [ ] Integrate the Geoapify API batch request flow for unverified strings, strictly ensuring it checks the `daily_usage` Dexie limit before making the HTTP fetch call.
-- [ ] Write a test mapping the parsed data from `/test/sample.csv` through this validation flow to ensure postcodes/details validate properly.
+- [x] Create `src/services/addressValidator.js`. Implement a local JavaScript sanity check that verifies major Australian States against numeric postcode ranges.
+- [x] Integrate the Geoapify API batch request flow for unverified strings, strictly ensuring it checks the `daily_usage` Dexie limit before making the HTTP fetch call.
+- [x] Write a test mapping the parsed data from `/test/sample.csv` through this validation flow to ensure postcodes/details validate properly.
 
 ## Stage 5: Main Application Flow & UI Integration
 
-- [ ] Build the actual logic flow in `Dashboard.jsx`.
-- [ ] Build a "Review" page that clearly maps Invalid addresses against their given `Order ID` providing manual edit functionality.
+- [x] Build the actual logic flow in `Dashboard.jsx`.
+- [x] Build a "Review" page that clearly maps Invalid addresses against their given `Order ID` providing manual edit functionality.
 
 ## Stage 6: Label Output Generation
 
-- [ ] Design the `LabelsOutput.jsx` view.
-- [ ] Map over ONLY the 'valid' grouped orders and render them as actual visual DOM elements scaled via CSS grid and print media queries targeted at a 90mm x 30mm thermal layout.
-- [ ] Keep CSS structured so switching layouts is easy. Provide a 'Print' button triggering `window.print()`.
+- [x] Design the `LabelsOutput.jsx` view.
+- [x] Map over ONLY the 'valid' grouped orders and render them as actual visual DOM elements scaled via CSS grid and print media queries targeted at a 90mm x 30mm thermal layout.
+- [x] Keep CSS structured so switching layouts is easy. Provide a 'Print' button triggering `window.print()`.

@@ -91,30 +91,33 @@ export const parseEbayCsv = (fileOrString) => {
           // Generate base grouped orders
           let parsedOrders = Array.from(ordersMap.values());
 
-          // Filter out tracked orders
-          // Usually "untracked" is fine, but "tracked" or "registered" or "express" drops it. 
-          // The prompt specifically says "Mapped orders featuring 'Tracked' shipping rules"
-          parsedOrders = parsedOrders.filter(order => {
-             const service = order.postageService.toLowerCase();
-             // Exclude if it strictly contains 'tracked' but NOT 'untracked'
-             const isUntracked = service.includes('untracked');
-             const isTracked = service.includes('tracked');
-             if (isTracked && !isUntracked) return false;
-             
-             // Optionally, if we needed to filter out Parcel / Express, we could. 
-             // But following prompt strictly: filter out "Tracked".
-             return true;
-          });
-
           // 2 & 3: Consolidate items into SKU formats string, and merge distinct orders 
           // if Buyer Username and Address match.
           const consolidatedMap = new Map();
+          const resultsArray = [];
 
           for (const order of parsedOrders) {
+             const itemsString = order.items.map(i => `${i.customLabel} X${i.quantity}`).join(' + ');
+
+             if (order.postageService !== "Australia Post Domestic Regular Letter Untracked") {
+                resultsArray.push({
+                   orderIds: order.orderNumber,
+                   buyerUsername: order.buyerUsername,
+                   name: order.postToName,
+                   address1: order.address1,
+                   address2: order.address2,
+                   city: order.city,
+                   state: order.state,
+                   postcode: order.postcode,
+                   country: order.country,
+                   itemsSummary: itemsString,
+                   manualFlag: true
+                });
+                continue;
+             }
+
              const rawAddress = [order.address1, order.address2, order.city, order.state, order.postcode].filter(Boolean).join(', ').toLowerCase();
              const mergeKey = `${order.buyerUsername}-${rawAddress}`;
-
-             const itemsString = order.items.map(i => `${i.customLabel} X${i.quantity}`).join(' + ');
 
              if (consolidatedMap.has(mergeKey)) {
                 const existing = consolidatedMap.get(mergeKey);
@@ -136,8 +139,7 @@ export const parseEbayCsv = (fileOrString) => {
              }
           }
 
-          // Final output formatting
-          const resultsArray = [];
+          // Final output formatting for consolidated
           for (const [key, merged] of consolidatedMap.entries()) {
              resultsArray.push({
                 orderIds: merged.orderNumbers.join(', '), // Could be multiple
