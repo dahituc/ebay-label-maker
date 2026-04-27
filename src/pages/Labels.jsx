@@ -90,7 +90,7 @@ export default function Labels() {
             </div>
           ) : (
             validOrders.map(order => (
-              <div key={order.orderId} className="label-item">
+              <div key={order.id} className="label-item">
                 <span className="label-to">To</span>
                 <strong className="label-name">{order.name}</strong>
                 <span className="label-address">{order.address1}{order.address2 ? `, ${order.address2}` : ''}</span>
@@ -118,7 +118,7 @@ export default function Labels() {
             </thead>
             <tbody>
               {validOrders.map(order => (
-                <tr key={order.orderId} style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr key={order.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '12px' }}>{order.orderId}</td>
                   <td style={{ padding: '12px' }}>{order.buyerUsername}</td>
                   <td style={{ padding: '12px' }}>{order.name}</td>

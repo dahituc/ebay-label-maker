@@ -34,7 +34,7 @@ export default function Review() {
   if (invalidOrders === undefined) return <div style={{ padding: '24px' }}>Loading...</div>;
 
   const handleEditClick = (order) => {
-    setEditingId(order.orderId);
+    setEditingId(order.id);
     setEditForm({ ...order });
   };
 
@@ -104,10 +104,10 @@ export default function Review() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {invalidOrders.map(order => {
-              const isEditing = editingId === order.orderId;
+              const isEditing = editingId === order.id;
               
               return (
-                <div key={order.orderId} style={{ 
+                <div key={order.id} style={{ 
                   border: `1px solid ${isEditing ? 'var(--primary)' : 'var(--border)'}`, 
                   borderRadius: 'var(--radius-sm)', 
                   padding: '16px',

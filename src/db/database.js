@@ -3,10 +3,19 @@ import Dexie from 'dexie';
 export const db = new Dexie('EbayLabelMakerDB');
 
 db.version(1).stores({
-  settings: 'key', // e.g., key='geoapify_api_key', value={ key: 'geoapify_api_key', value: '...' }
-  daily_usage: 'date', // date='YYYY-MM-DD', count=Number
+  settings: 'key',
+  daily_usage: 'date',
   csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
-  orders: 'orderId, buyerUsername, address, [buyerUsername+address], status' // status: 'valid', 'invalid', 'merged'
+  orders: 'orderId, buyerUsername, address, [buyerUsername+address], status'
+});
+
+// v2: Switch orders PK to auto-increment so multiple batches can coexist
+// even when they contain overlapping eBay order IDs.
+db.version(2).stores({
+  settings: 'key',
+  daily_usage: 'date',
+  csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
+  orders: '++id, orderId, buyerUsername, batchTimestamp, status'
 });
 
 // Helper to get a setting
