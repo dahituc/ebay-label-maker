@@ -53,7 +53,12 @@ export async function validateAddresses(addresses, deps = {}) {
 
   for (const addr of addresses) {
     if (addr.manualFlag) {
-      valid.push({ ...addr, status: 'manual' });
+      const isLocalValid = validatePostcode(addr.state, addr.postcode);
+      valid.push({ 
+        ...addr, 
+        status: 'manual', 
+        error: isLocalValid ? null : 'Local Validation Failed: State/Postcode mismatch.' 
+      });
     } else if (validatePostcode(addr.state, addr.postcode)) {
       valid.push({ ...addr, status: 'valid' });
     } else {

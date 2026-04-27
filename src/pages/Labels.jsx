@@ -1,28 +1,57 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../db/database.js';
-import { Printer, List, LayoutGrid } from 'lucide-react';
+import { Printer, List, LayoutGrid, ChevronLeft } from 'lucide-react';
 
 export default function Labels() {
-  const validOrders = useLiveQuery(
-    () => db.orders.filter(order => order.status === 'valid').toArray()
-  );
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const batchTimestamp = searchParams.get('batch');
+
+  // If a specific batch is requested, filter to that batch only; otherwise show all valid
+  const validOrders = useLiveQuery(() => {
+    if (batchTimestamp) {
+      return db.orders
+        .filter(order => order.status === 'valid' && order.batchTimestamp === batchTimestamp)
+        .toArray();
+    }
+    return db.orders.filter(order => order.status === 'valid').toArray();
+  }, [batchTimestamp]);
+
   const [viewMode, setViewMode] = useState('labels'); // 'labels' | 'table'
 
-  if (validOrders === undefined) return <div style={{ padding: '24px' }}>Loading...</div>;
+  // Determine batch display info (must be above early return to preserve hook order)
+  const batchInfo = React.useMemo(() => {
+    if (!validOrders || validOrders.length === 0) return 'No orders';
+    if (batchTimestamp) {
+      const filename = validOrders[0]?.batchFilename;
+      const time = new Date(batchTimestamp).toLocaleString();
+      return `${filename || 'Unknown'} — ${time}`;
+    }
+    const files = new Set(validOrders.map(o => o.batchFilename).filter(Boolean));
+    if (files.size === 0) return 'Active Session';
+    if (files.size === 1) return [...files][0];
+    return `${files.size} CSVs combined`;
+  }, [validOrders, batchTimestamp]);
 
-  // Assuming all orders have the same batchTimestamp for the active session
-  const batchTimestamp = validOrders.length > 0 && validOrders[0].batchTimestamp 
-    ? new Date(validOrders[0].batchTimestamp).toLocaleString() 
-    : 'Active Session';
+  if (validOrders === undefined) return <div style={{ padding: '24px' }}>Loading...</div>;
 
   return (
     <div className="animate-fade-in labels-page">
       <div className="print-hide" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
+          {batchTimestamp && (
+            <button 
+              onClick={() => navigate('/dashboard')}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px', fontWeight: 500, fontSize: '0.9rem', padding: 0 }}
+            >
+              <ChevronLeft size={16} /> Back to Dashboard
+            </button>
+          )}
           <h1>Print Labels</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Batch: <strong>{batchTimestamp}</strong><br />
+            Batch: <strong>{batchInfo}</strong><br />
             {validOrders.length} valid orders ready for printing.
           </p>
         </div>
@@ -62,6 +91,7 @@ export default function Labels() {
           ) : (
             validOrders.map(order => (
               <div key={order.orderId} className="label-item">
+                <span className="label-to">To</span>
                 <strong className="label-name">{order.name}</strong>
                 <span className="label-address">{order.address1}{order.address2 ? `, ${order.address2}` : ''}</span>
                 <span className="label-address">{order.city} {order.state} {order.postcode}</span>

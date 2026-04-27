@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../db/database.js';
 import { validatePostcode } from '../services/addressValidator.js';
-import { Edit2, Check, X, AlertCircle } from 'lucide-react';
+import { Edit2, Check, X, AlertCircle, ChevronLeft } from 'lucide-react';
 
 export default function Review() {
-  const invalidOrders = useLiveQuery(
-    () => db.orders.filter(order => order.status !== 'valid').toArray()
-  );
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const batchTimestamp = searchParams.get('batch');
+
+  // If a specific batch is requested, filter to that batch only
+  const invalidOrders = useLiveQuery(() => {
+    if (batchTimestamp) {
+      return db.orders
+        .filter(order => order.status !== 'valid' && order.status !== 'manual' && order.batchTimestamp === batchTimestamp)
+        .toArray();
+    }
+    return db.orders.filter(order => order.status !== 'valid' && order.status !== 'manual').toArray();
+  }, [batchTimestamp]);
 
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
+
+  // Determine batch display info (must be above early return to preserve hook order)
+  const batchInfo = React.useMemo(() => {
+    if (!batchTimestamp) return null;
+    if (!invalidOrders || invalidOrders.length === 0) return batchTimestamp;
+    const filename = invalidOrders[0]?.batchFilename;
+    return filename || 'Unknown CSV';
+  }, [invalidOrders, batchTimestamp]);
 
   if (invalidOrders === undefined) return <div style={{ padding: '24px' }}>Loading...</div>;
 
@@ -47,7 +66,22 @@ export default function Review() {
   return (
     <div className="animate-fade-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <h1>Review Issues</h1>
+        <div>
+          {batchTimestamp && (
+            <button 
+              onClick={() => navigate('/dashboard')}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px', fontWeight: 500, fontSize: '0.9rem', padding: 0 }}
+            >
+              <ChevronLeft size={16} /> Back to Dashboard
+            </button>
+          )}
+          <h1 style={{ marginBottom: '4px' }}>Review Issues</h1>
+          {batchInfo && (
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Batch: <strong>{batchInfo}</strong>
+            </p>
+          )}
+        </div>
         {invalidOrders.length > 0 && (
           <div style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 600 }}>
             {invalidOrders.length} Records Require Attention
@@ -106,32 +140,32 @@ export default function Review() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>Name</label>
-                          <input type="text" name="name" value={editForm.name} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }} />
+                          <input type="text" name="name" value={editForm.name} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>Address 1</label>
-                          <input type="text" name="address1" value={editForm.address1} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }} />
+                          <input type="text" name="address1" value={editForm.address1} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>Address 2</label>
-                          <input type="text" name="address2" value={editForm.address2 || ''} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }} />
+                          <input type="text" name="address2" value={editForm.address2 || ''} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>City / Suburb</label>
-                          <input type="text" name="city" value={editForm.city} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }} />
+                          <input type="text" name="city" value={editForm.city} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>State</label>
-                          <input type="text" name="state" value={editForm.state} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }} />
+                          <input type="text" name="state" value={editForm.state} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
                         <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>Postcode</label>
-                          <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }} />
+                          <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
                       </div>
                       
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-                        <button className="btn" onClick={handleCancelEdit} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <button className="btn" onClick={handleCancelEdit} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', gap: '4px', alignItems: 'center', padding: '8px 16px', cursor: 'pointer', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
                           <X size={16} /> Cancel
                         </button>
                         <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>

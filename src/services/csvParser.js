@@ -111,7 +111,8 @@ export const parseEbayCsv = (fileOrString) => {
                    postcode: order.postcode,
                    country: order.country,
                    itemsSummary: itemsString,
-                   manualFlag: true
+                   manualFlag: true,
+                   postageService: order.postageService
                 });
                 continue;
              }
