@@ -1,37 +1,144 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Key, Activity, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { getSetting, saveSetting, getDailyUsage } from '../db/database';
 
 export default function Settings() {
+  const [apiKey, setApiKey] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+  const [dailyUsage, setDailyUsage] = useState(0);
+  const maxUsage = 3000;
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const savedKey = await getSetting('geoapify_api_key');
+        if (savedKey) setApiKey(savedKey);
+
+        const today = new Date().toISOString().split('T')[0];
+        const usageCount = await getDailyUsage(today);
+        setDailyUsage(usageCount);
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+    loadData();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      await saveSetting('geoapify_api_key', apiKey);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (error) {
+      console.error('Error saving API key:', error);
+    }
+  };
+
+  const usagePercentage = Math.min((dailyUsage / maxUsage) * 100, 100);
+  const getUsageColor = () => {
+    if (usagePercentage < 50) return 'var(--success)';
+    if (usagePercentage < 85) return 'var(--warning)';
+    return 'var(--danger)';
+  };
+
   return (
-    <div className="animate-fade-in">
-      <h1>Settings</h1>
-      <div className="card">
-        <h2>API Integrations</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Configure your Geoapify API key for address validation.</p>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Key size={28} color="var(--accent)" />
+          Settings
+        </h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Manage your application configuration and API quotas.</p>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Key size={20} />
+          API Integrations
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          Configure your Geoapify API key. This is required to seamlessly validate addresses that fail local offline validation.
+        </p>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '400px' }}>
-          <label style={{ fontWeight: 500 }}>Geoapify API Key</label>
-          <input 
-            type="password" 
-            placeholder="Enter your API key" 
-            style={{ 
-              padding: '10px 12px', 
-              borderRadius: 'var(--radius-sm)', 
-              border: '1px solid var(--border)',
-              backgroundColor: 'var(--bg-primary)',
-              color: 'var(--text-primary)'
-            }} 
-          />
-          <button style={{
-            background: 'var(--accent)',
-            color: 'white',
-            border: 'none',
-            padding: '10px 16px',
-            borderRadius: 'var(--radius-sm)',
-            fontWeight: 600,
-            cursor: 'pointer',
-            marginTop: '12px',
-            alignSelf: 'flex-start'
-          }}>Save Settings</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
+            <input 
+              type="password" 
+              placeholder="Enter your API key" 
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              style={{ 
+                padding: '12px 14px', 
+                borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                width: '100%',
+                fontSize: '1rem',
+                outline: 'none',
+                transition: 'var(--transition)'
+              }} 
+              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+          
+          <button 
+            onClick={handleSave}
+            style={{
+              background: 'var(--accent)',
+              color: 'white',
+              border: 'none',
+              padding: '12px 20px',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              alignSelf: 'flex-start',
+              transition: 'var(--transition)'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'var(--accent)'}
+          >
+            {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+            {isSaved ? 'Saved Successfully' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Activity size={20} />
+          API Daily Usage Quota
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          Monitor your Geoapify batch processing limits to avoid overages. The free tier allows up to 3,000 validations per day.
+        </p>
+
+        <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: 600 }}>
+            <span>Requests Used</span>
+            <span>{dailyUsage.toLocaleString()} / {maxUsage.toLocaleString()}</span>
+          </div>
+          
+          <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
+            <div style={{ 
+              width: `${usagePercentage}%`, 
+              backgroundColor: getUsageColor(), 
+              height: '100%',
+              transition: 'width 0.5s ease-in-out' 
+            }} />
+          </div>
+
+          {usagePercentage >= 90 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 500 }}>
+              <AlertCircle size={16} />
+              You are approaching your daily free limit!
+            </div>
+          )}
         </div>
       </div>
     </div>
