@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -9,7 +9,7 @@ import Labels from './pages/Labels';
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <HashRouter>
         <div className="app-container">
           <Sidebar className="print-hide" />
           <main className="main-content">
@@ -24,7 +24,7 @@ function App() {
             </ErrorBoundary>
           </main>
         </div>
-      </BrowserRouter>
+      </HashRouter>
     </ErrorBoundary>
   );
 }

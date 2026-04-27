@@ -1,5 +1,6 @@
 {
-  "name": "tmp_vite",
+  "name": "ebay-label-maker",
+  "homepage": "https://dahituc.github.io/ebay-label-maker/",
   "private": true,
   "version": "0.0.0",
   "type": "module",
