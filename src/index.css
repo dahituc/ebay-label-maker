@@ -286,11 +286,16 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
 .label-sku, .label-buyer-note{
   font-size: 9px;
   color: var(--text-secondary);
-  text-align: left;
+  text-align: right;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.label-sku > b {
+  font-size: 12px;
+  font-weight: 900;
 }
 
 /* Animations */

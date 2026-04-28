@@ -92,8 +92,8 @@ export default function Labels() {
             validOrders.map(order => (
               <div key={order.id} className="label-item">
                 <span className="label-to">To</span>
-                <span className="label-orderID">({order.orderId})</span>
-                <strong className="label-name">{order.name}</strong>
+                
+                <strong className="label-name">{order.name} <span className="label-orderID">({order.orderId})</span></strong>
                 <span className="label-address">{order.address1}{order.address2 ? `, ${order.address2}` : ''}</span>
                 <span className="label-address">{order.city} {order.state} {order.postcode}</span>
                 {order.country && order.country.toLowerCase() !== 'australia' && (
