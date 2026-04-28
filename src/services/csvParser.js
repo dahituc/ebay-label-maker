@@ -54,6 +54,7 @@ export const parseEbayCsv = (fileOrString) => {
                 country: item['Post To Country'],
                 postageService: item['Postage Service'] || '',
                 items: [],
+                buyerNote: item['Buyer Note'],
                 // Single-row orders have the item on the same line as the address
                 // Multi-row orders have address on first line, items on subsequent lines
               });
@@ -112,7 +113,8 @@ export const parseEbayCsv = (fileOrString) => {
                    country: order.country,
                    itemsSummary: itemsString,
                    manualFlag: true,
-                   postageService: order.postageService
+                   postageService: order.postageService,
+                   buyerNote: order.buyerNote,
                 });
                 continue;
              }
@@ -135,7 +137,8 @@ export const parseEbayCsv = (fileOrString) => {
                    state: order.state,
                    postcode: order.postcode,
                    country: order.country,
-                   combinedItems: [itemsString].filter(Boolean)
+                   combinedItems: [itemsString].filter(Boolean),
+                   buyerNote: order.buyerNote
                 });
              }
           }
@@ -152,7 +155,8 @@ export const parseEbayCsv = (fileOrString) => {
                 state: merged.state,
                 postcode: merged.postcode,
                 country: merged.country,
-                itemsSummary: merged.combinedItems.join(' + ')
+                itemsSummary: merged.combinedItems.join(' + '),
+                buyerNote: merged.buyerNote
              });
           }
 

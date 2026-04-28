@@ -92,6 +92,7 @@ export default function Labels() {
             validOrders.map(order => (
               <div key={order.id} className="label-item">
                 <span className="label-to">To</span>
+                <span className="label-orderID">({order.orderId})</span>
                 <strong className="label-name">{order.name}</strong>
                 <span className="label-address">{order.address1}{order.address2 ? `, ${order.address2}` : ''}</span>
                 <span className="label-address">{order.city} {order.state} {order.postcode}</span>
@@ -99,7 +100,8 @@ export default function Labels() {
                   <span className="label-address">{order.country}</span>
                 )}
                 <div style={{ flex: 1 }}></div>
-                <span className="label-sku">{order.itemsSummary || ''}</span>
+                <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary.split(" + ").join("<br/>") }} />
+                {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
               </div>
             ))
           )}

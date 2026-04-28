@@ -255,7 +255,10 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   overflow: hidden;
   border-radius: 4px;
 }
-
+.label-orderID {
+  font-size: 10px;
+  font-weight: 400; display: inline-block;
+}
 .label-to {
   font-size: 10px;
   font-weight: 700;
@@ -269,6 +272,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   font-size: 15px;
   font-weight: bold;
   line-height: 1.25;
+  display: inline-block;
 }
 
 .label-address {
@@ -279,10 +283,10 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   text-overflow: ellipsis;
 }
 
-.label-sku {
+.label-sku, .label-buyer-note{
   font-size: 9px;
   color: var(--text-secondary);
-  text-align: right;
+  text-align: left;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
