@@ -96,7 +96,6 @@ export default function Labels() {
                 <strong className="label-name">{order.name} <span className="label-orderID">({order.orderId})</span></strong>
                 <span className="label-address">{order.address1},</span>
                 <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
-                <span className="label-address"></span>
                 {order.country && order.country.toLowerCase() !== 'australia' && (
                   <span className="label-address">{order.country}</span>
                 )}
