@@ -383,10 +383,13 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
     border: none;
     padding: 2mm 3mm;
     margin: 0;
-    page-break-after: always;
     background: transparent;
     color: black;
     border-radius: 0;
+  }
+
+  .label-item:not(:last-child) {
+    page-break-after: always;
   }
 
   .label-to {

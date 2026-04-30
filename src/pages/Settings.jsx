@@ -8,11 +8,16 @@ export default function Settings() {
   const [dailyUsage, setDailyUsage] = useState(0);
   const maxUsage = 3000;
 
+  const [useGeoApify, setUseGeoApify] = useState(true);
+
   useEffect(() => {
     const loadData = async () => {
       try {
         const savedKey = await getSetting('geoapify_api_key');
         if (savedKey) setApiKey(savedKey);
+
+        const savedUseGeo = await getSetting('use_geoapify');
+        if (savedUseGeo !== null) setUseGeoApify(savedUseGeo === 'true');
 
         const today = new Date().toISOString().split('T')[0];
         const usageCount = await getDailyUsage(today);
@@ -27,10 +32,11 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       await saveSetting('geoapify_api_key', apiKey);
+      await saveSetting('use_geoapify', useGeoApify.toString());
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
-      console.error('Error saving API key:', error);
+      console.error('Error saving settings:', error);
     }
   };
 
@@ -60,7 +66,20 @@ export default function Settings() {
           Configure your Geoapify API key. This is required to seamlessly validate addresses that fail local offline validation.
         </p>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+            <input 
+              type="checkbox" 
+              id="useGeoApify"
+              checked={useGeoApify}
+              onChange={(e) => setUseGeoApify(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <label htmlFor="useGeoApify" style={{ fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', flex: 1 }}>
+              Enable Geoapify Address Validation
+            </label>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
             <input 
@@ -68,6 +87,7 @@ export default function Settings() {
               placeholder="Enter your API key" 
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              disabled={!useGeoApify}
               style={{ 
                 padding: '12px 14px', 
                 borderRadius: 'var(--radius-sm)', 
@@ -77,7 +97,8 @@ export default function Settings() {
                 width: '100%',
                 fontSize: '1rem',
                 outline: 'none',
-                transition: 'var(--transition)'
+                transition: 'var(--transition)',
+                opacity: useGeoApify ? 1 : 0.6
               }} 
               onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
               onBlur={(e) => e.target.style.borderColor = 'var(--border)'}

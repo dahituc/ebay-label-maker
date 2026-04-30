@@ -48,6 +48,61 @@ export async function validateAddresses(addresses, deps = {}) {
   const _incrementDailyUsage = deps.incrementDailyUsage || incrementDailyUsage;
   const _fetch = deps.fetch || globalThis.fetch;
 
+  // 2. Check Daily Quota
+  const today = new Date().toISOString().split('T')[0];
+  let currentUsage = 0;
+  let apiKey = null;
+  let useGeoApify = true;
+
+  try {
+    currentUsage = await _getDailyUsage(today);
+    apiKey = await _getSetting('geoapify_api_key');
+    const savedUseGeo = await _getSetting('use_geoapify');
+    if (savedUseGeo !== null) useGeoApify = savedUseGeo === 'true';
+  } catch (err) {
+    console.warn("DB access failed, skipping API validation.", err);
+    return addresses.map(addr => {
+        if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
+        const isLocalValid = validatePostcode(addr.state, addr.postcode);
+        return { ...addr, status: isLocalValid ? 'valid' : 'unverified' };
+    });
+  }
+
+  if (!useGeoApify) {
+    return addresses.map(addr => {
+        if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
+        const isLocalValid = validatePostcode(addr.state, addr.postcode);
+        return { ...addr, status: isLocalValid ? 'valid' : 'unverified' };
+    });
+  }
+
+  const remainingLimit = DAILY_LIMIT - currentUsage;
+  const canVerifyAll = apiKey && addresses.length <= remainingLimit;
+
+  if (canVerifyAll) {
+    // 3. Batch API Geocoding for ALL addresses
+    try {
+      const apiResults = await runGeoapifyBatch(addresses, apiKey, _fetch);
+      await _incrementDailyUsage(today, addresses.length);
+
+      return addresses.map((addr, index) => {
+        const result = apiResults[index];
+        const isApiValid = result && result.rank && result.rank.confidence >= 0.7;
+        
+        return {
+          ...addr,
+          formatted: isApiValid ? result.formatted : null,
+          status: isApiValid ? 'valid' : 'invalid',
+          error: isApiValid ? null : 'API could not verify'
+        };
+      });
+    } catch (err) {
+      console.error("Geoapify Batch API Error", err);
+      // Fallback to local validation
+    }
+  }
+
+  // Fallback / Current Behavior: Local validation first, then API only for unverified if possible
   const valid = [];
   const unverified = [];
 
@@ -66,46 +121,24 @@ export async function validateAddresses(addresses, deps = {}) {
     }
   }
 
-  if (unverified.length === 0) return valid;
-
-  // 2. Check Daily Quota for remaining
-  const today = new Date().toISOString().split('T')[0];
-  let currentUsage = 0;
-  let apiKey = null;
-
-  try {
-    currentUsage = await _getDailyUsage(today);
-    apiKey = await _getSetting('geoapify_api_key');
-  } catch (err) {
-    console.warn("DB access failed, skipping API validation.", err);
-    return [...valid, ...unverified.map(a => ({ ...a, error: 'Local DB Error' }))];
+  if (unverified.length === 0 || !apiKey || (currentUsage + unverified.length > DAILY_LIMIT)) {
+    return [...valid, ...unverified.map(a => ({ ...a, error: !apiKey ? 'No API Key' : 'Daily Limit Exceeded' }))];
   }
 
-  if (!apiKey) {
-    console.warn("No Geoapify API key found, skipping API validation.");
-    return [...valid, ...unverified.map(a => ({ ...a, error: 'No API Key' }))];
-  }
-
-  if (currentUsage + unverified.length > DAILY_LIMIT) {
-    console.warn("Daily API limit exceeded, skipping API validation.");
-    return [...valid, ...unverified.map(a => ({ ...a, error: 'Daily Limit Exceeded' }))];
-  }
-
-  // 3. Batch API Geocoding
+  // Batch API Geocoding for unverified only
   try {
     const apiResults = await runGeoapifyBatch(unverified, apiKey, _fetch);
-    
-    // Update usage count
     await _incrementDailyUsage(today, unverified.length);
 
-    // Map API results back to addresses
     const finalApiResults = unverified.map((addr, index) => {
       const result = apiResults[index];
-      // Basic confidence check to map unverified -> valid or invalid
-      const isApiValid = result && result.features && result.features.length > 0 && result.features[0].properties && result.features[0].properties.rank && result.features[0].properties.rank.confidence >= 0.5;
+      const isApiValid = result && result.rank && result.rank.confidence >= 0.5;
       
+    console.log({rank: result.rank, formatted: result.formatted});
+    
       return {
         ...addr,
+        formatted: isApiValid ? result.formatted : null,
         status: isApiValid ? 'valid' : 'invalid',
         error: isApiValid ? null : 'API could not verify'
       };
@@ -120,7 +153,8 @@ export async function validateAddresses(addresses, deps = {}) {
 
 async function runGeoapifyBatch(unverified, apiKey, fetchFn) {
   const queries = unverified.map(addr => {
-    return `${addr.address1} ${addr.address2 || ''}, ${addr.city}, ${addr.state} ${addr.postcode}`.trim().replace(/,\s+,/g, ',');
+    const streetAddress = addr.address2 ? addr.address2 : addr.address1;
+    return `${streetAddress}, ${addr.city}, ${addr.state} ${addr.postcode}`.trim();
   });
 
   const baseUrl = 'https://api.geoapify.com/v1/batch/geocode/search';
