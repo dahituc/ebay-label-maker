@@ -278,9 +278,9 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
 .label-address {
   font-size: 13px;
   line-height: 1.25;
-  white-space: nowrap;
+  white-space: break-spaces;
   overflow: hidden;
-  text-overflow: ellipsis;
+  /* text-overflow: ellipsis; */
 }
 
 .label-sku, .label-buyer-note{

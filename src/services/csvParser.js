@@ -98,7 +98,7 @@ export const parseEbayCsv = (fileOrString) => {
           const resultsArray = [];
 
           for (const order of parsedOrders) {
-             const itemsString = order.items.map(i => `${i.customLabel} X <b>${i.quantity}</b>`).join(' + ');
+             const itemsString = order.items.map(i => `${i.customLabel} X <b>${i.quantity}</b>`).join('<br/>');
 
              if (order.postageService !== "Australia Post Domestic Regular Letter Untracked") {
                 resultsArray.push({

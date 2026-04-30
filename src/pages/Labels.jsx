@@ -100,7 +100,7 @@ export default function Labels() {
                   <span className="label-address">{order.country}</span>
                 )}
                 <div style={{ flex: 1 }}></div>
-                <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary.split(" + ").join("<br/>") }} />
+                <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
                 {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
               </div>
             ))
@@ -112,7 +112,7 @@ export default function Labels() {
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
                 <th style={{ padding: '12px' }}>Order ID</th>
-                <th style={{ padding: '12px' }}>Buyer</th>
+                {/* <th style={{ padding: '12px' }}>Buyer</th> */}
                 <th style={{ padding: '12px' }}>Name</th>
                 <th style={{ padding: '12px' }}>Address</th>
                 <th style={{ padding: '12px' }}>Items</th>
@@ -122,14 +122,18 @@ export default function Labels() {
               {validOrders.map(order => (
                 <tr key={order.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '12px' }}>{order.orderId}</td>
-                  <td style={{ padding: '12px' }}>{order.buyerUsername}</td>
+                  {/* <td style={{ padding: '12px' }}>{order.buyerUsername}</td> */}
                   <td style={{ padding: '12px' }}>{order.name}</td>
                   <td style={{ padding: '12px' }}>
-                    {order.address1}{order.address2 ? `, ${order.address2}` : ''}<br/>
-                    {order.city}, {order.state} {order.postcode}
+                    <span className="label-address">{order.address1},</span>
+                <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                {order.country && order.country.toLowerCase() !== 'australia' && (
+                  <span className="label-address">{order.country}</span>
+                )}
                   </td>
                   <td style={{ padding: '12px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={order.itemsSummary}>
-                    {order.itemsSummary}
+                    <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
+                    {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
                   </td>
                 </tr>
               ))}
