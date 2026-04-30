@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Activity, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { Key, Activity, Save, CheckCircle, AlertCircle, Layout } from 'lucide-react';
 import { getSetting, saveSetting, getDailyUsage } from '../db/database';
 
 export default function Settings() {
@@ -9,6 +9,8 @@ export default function Settings() {
   const maxUsage = 3000;
 
   const [useGeoApify, setUseGeoApify] = useState(true);
+  const [labelWidth, setLabelWidth] = useState(90);
+  const [labelHeight, setLabelHeight] = useState(30);
 
   useEffect(() => {
     const loadData = async () => {
@@ -22,6 +24,12 @@ export default function Settings() {
         const today = new Date().toISOString().split('T')[0];
         const usageCount = await getDailyUsage(today);
         setDailyUsage(usageCount);
+
+        const savedWidth = await getSetting('label_width');
+        if (savedWidth) setLabelWidth(parseInt(savedWidth, 10));
+
+        const savedHeight = await getSetting('label_height');
+        if (savedHeight) setLabelHeight(parseInt(savedHeight, 10));
       } catch (error) {
         console.error('Error loading settings:', error);
       }
@@ -33,6 +41,13 @@ export default function Settings() {
     try {
       await saveSetting('geoapify_api_key', apiKey);
       await saveSetting('use_geoapify', useGeoApify.toString());
+      await saveSetting('label_width', labelWidth.toString());
+      await saveSetting('label_height', labelHeight.toString());
+      
+      // Update CSS variables immediately
+      document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
+      document.documentElement.style.setProperty('--label-height', `${labelHeight}mm`);
+      
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
@@ -128,6 +143,75 @@ export default function Settings() {
             {isSaved ? 'Saved Successfully' : 'Save Settings'}
           </button>
         </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Layout size={20} />
+          Label Configuration
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          Set the dimensions for your thermal labels. The defaults are optimized for 90mm x 30mm labels.
+        </p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Width (mm)</label>
+            <input 
+              type="number" 
+              value={labelWidth}
+              onChange={(e) => setLabelWidth(parseInt(e.target.value, 10) || 0)}
+              style={{ 
+                padding: '12px 14px', 
+                borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                width: '100%',
+                fontSize: '1rem',
+                outline: 'none'
+              }} 
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Height (mm)</label>
+            <input 
+              type="number" 
+              value={labelHeight}
+              onChange={(e) => setLabelHeight(parseInt(e.target.value, 10) || 0)}
+              style={{ 
+                padding: '12px 14px', 
+                borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                width: '100%',
+                fontSize: '1rem',
+                outline: 'none'
+              }} 
+            />
+          </div>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          style={{
+            background: 'var(--accent)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 20px',
+            borderRadius: 'var(--radius-sm)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'var(--transition)'
+          }}
+        >
+          {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+          {isSaved ? 'Saved Successfully' : 'Save Label Size'}
+        </button>
       </div>
 
       <div className="card" style={{ maxWidth: '600px' }}>

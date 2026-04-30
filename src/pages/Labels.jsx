@@ -62,7 +62,12 @@ export default function Labels() {
     return `${files.size} CSVs combined`;
   }, [validOrders, batchTimestamp]);
 
-  if (validOrders === undefined) return <div style={{ padding: '24px' }}>Loading...</div>;
+  if (validOrders === undefined) return (
+    <div className="loading-state" style={{ height: '50vh' }}>
+      <div className="spinner spin"></div>
+      <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Loading orders...</p>
+    </div>
+  );
 
   return (
     <div className="animate-fade-in labels-page">
@@ -149,12 +154,19 @@ export default function Labels() {
                     </div>
                   ) : (
                     <>
-                      <span className="label-to">To</span>
-                      <strong className="label-name">{order.name} <span className="label-orderID">({order.orderId})</span></strong>
-                      <span className="label-address">{order.address1},</span>
-                      <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
-                      {order.country && order.country.toLowerCase() !== 'australia' && (
-                        <span className="label-address">{order.country}</span>
+                      {!order.isExtra && <span className="label-to">To</span>}
+                      <strong className="label-name">
+                        {order.name} <span className="label-orderID">({order.orderId})</span>
+                        {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
+                      </strong>
+                      {!order.isExtra && (
+                        <>
+                          <span className="label-address">{order.address1},</span>
+                          <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                          {order.country && order.country.toLowerCase() !== 'australia' && (
+                            <span className="label-address">{order.country}</span>
+                          )}
+                        </>
                       )}
                       <div style={{ flex: 1 }}></div>
                       <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
@@ -187,7 +199,12 @@ export default function Labels() {
                     <td style={{ padding: '12px' }}>
                       {isEditing ? (
                         <input type="text" name="name" value={editForm.name} onChange={handleInputChange} style={{ width: '100%', padding: '4px', fontSize: '0.9rem' }} />
-                      ) : order.name}
+                      ) : (
+                        <>
+                          {order.name}
+                          {order.isExtra && <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>(Extra)</span>}
+                        </>
+                      )}
                     </td>
                     <td style={{ padding: '12px' }}>
                       {isEditing ? (
@@ -201,10 +218,14 @@ export default function Labels() {
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <span className="label-address">{order.address1},</span>
-                          <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
-                        </>
+                        !order.isExtra ? (
+                          <>
+                            <span className="label-address">{order.address1},</span>
+                            <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Shipping details omitted</span>
+                        )
                       )}
                     </td>
                     <td style={{ padding: '12px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

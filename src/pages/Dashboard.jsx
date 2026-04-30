@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { parseEbayCsv } from '../services/csvParser.js';
 import { validateAddresses } from '../services/addressValidator.js';
 import { db } from '../db/database.js';
-import { UploadCloud, CheckCircle, AlertTriangle, Loader, FileText, Clock, Archive, Trash2, Printer, Edit2, Info } from 'lucide-react';
+import { UploadCloud, CheckCircle, AlertTriangle, FileText, Clock, Archive, Trash2, Printer, Edit2, Info } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -200,9 +200,9 @@ export default function Dashboard() {
             style={{ display: 'none' }}
           />
           {isProcessing ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <Loader className="spin" size={48} color="var(--primary)" />
-              <span style={{ fontWeight: 500 }}>{progress}</span>
+            <div className="loading-state">
+              <div className="spinner spin"></div>
+              <span style={{ fontWeight: 600, color: 'var(--accent)', fontSize: '1.1rem' }}>{progress}</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: isDragging ? 'var(--accent)' : 'var(--text-secondary)' }}>

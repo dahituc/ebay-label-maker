@@ -31,7 +31,12 @@ export default function Review() {
     return filename || 'Unknown CSV';
   }, [invalidOrders, batchTimestamp]);
 
-  if (invalidOrders === undefined) return <div style={{ padding: '24px' }}>Loading...</div>;
+  if (invalidOrders === undefined) return (
+    <div className="loading-state" style={{ height: '50vh' }}>
+      <div className="spinner spin"></div>
+      <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Loading issues...</p>
+    </div>
+  );
 
   const handleEditClick = (order) => {
     setEditingId(order.id);
@@ -117,7 +122,10 @@ export default function Review() {
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '4px' }}>Order {order.orderId}</div>
+                      <div style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '4px' }}>
+                        Order {order.orderId}
+                        {order.isExtra && <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>(Extra Items)</span>}
+                      </div>
                       <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Buyer: {order.buyerUsername}</div>
                     </div>
                     

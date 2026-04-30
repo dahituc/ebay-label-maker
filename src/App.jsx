@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
@@ -5,8 +6,19 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Review from './pages/Review';
 import Labels from './pages/Labels';
+import { getSetting } from './db/database';
 
 function App() {
+  useEffect(() => {
+    const applyLabelSettings = async () => {
+      const width = await getSetting('label_width');
+      const height = await getSetting('label_height');
+      if (width) document.documentElement.style.setProperty('--label-width', `${width}mm`);
+      if (height) document.documentElement.style.setProperty('--label-height', `${height}mm`);
+    };
+    applyLabelSettings();
+  }, []);
+
   return (
     <ErrorBoundary>
       <HashRouter>

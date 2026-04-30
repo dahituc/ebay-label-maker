@@ -118,6 +118,7 @@ export const parseEbayCsv = (fileOrString) => {
                        manualFlag: true,
                        postageService: order.postageService,
                        buyerNote: order.buyerNote,
+                       isExtra: i > 0
                     });
                 }
                 continue;
@@ -163,7 +164,8 @@ export const parseEbayCsv = (fileOrString) => {
                    postcode: merged.postcode,
                    country: merged.country,
                    itemsSummary: chunk.join('<br/>'),
-                   buyerNote: merged.buyerNote
+                   buyerNote: merged.buyerNote,
+                   isExtra: i > 0
                 });
              }
           }
