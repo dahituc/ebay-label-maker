@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { parseEbayCsv } from '../services/csvParser.js';
 import { validateAddresses } from '../services/addressValidator.js';
 import { db } from '../db/database.js';
-import { UploadCloud, CheckCircle, AlertTriangle, Loader, FileText, Clock, Archive, Trash2, Printer, Edit2, Info } from 'lucide-react';
+import { UploadCloud, CheckCircle, AlertTriangle, FileText, Clock, Archive, Trash2, Printer, Edit2, Info } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -31,8 +31,9 @@ export default function Dashboard() {
     return Array.from(groups.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   }, [allOrders]);
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
+  const [isDragging, setIsDragging] = useState(false);
+
+  const processFile = async (file) => {
     if (!file) return;
 
     setIsProcessing(true);
@@ -85,14 +86,38 @@ export default function Dashboard() {
         const oldestLogs = await db.csv_logs.orderBy('id').limit(logsCount - 5).toArray();
         await db.csv_logs.bulkDelete(oldestLogs.map(l => l.id));
       }
-      
-      event.target.value = null;
     } catch (err) {
       console.error(err);
       setError(err.message || 'An error occurred during processing.');
     } finally {
       setIsProcessing(false);
       setProgress('');
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    processFile(file);
+    event.target.value = null;
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'text/csv' || file.name.endsWith('.csv')) {
+      processFile(file);
+    } else {
+      setError('Please upload a valid CSV file.');
     }
   };
 
@@ -151,16 +176,19 @@ export default function Dashboard() {
         )}
         
         <label 
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           style={{ 
             display: 'block',
-            border: '2px dashed var(--border)', 
+            border: `2px dashed ${isDragging ? 'var(--accent)' : 'var(--border)'}`, 
             borderRadius: 'var(--radius)', 
             padding: '60px', 
             textAlign: 'center',
             marginTop: '24px',
             cursor: isProcessing ? 'wait' : 'pointer',
             transition: 'var(--transition)',
-            background: 'var(--bg-secondary)',
+            background: isDragging ? 'rgba(59, 130, 246, 0.05)' : 'var(--bg-secondary)',
             position: 'relative'
           }}
         >
@@ -172,14 +200,16 @@ export default function Dashboard() {
             style={{ display: 'none' }}
           />
           {isProcessing ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <Loader className="spin" size={48} color="var(--primary)" />
-              <span style={{ fontWeight: 500 }}>{progress}</span>
+            <div className="loading-state">
+              <div className="spinner spin"></div>
+              <span style={{ fontWeight: 600, color: 'var(--accent)', fontSize: '1.1rem' }}>{progress}</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: isDragging ? 'var(--accent)' : 'var(--text-secondary)' }}>
               <UploadCloud size={48} />
-              <span style={{ fontWeight: 500, fontSize: '1.1rem' }}>Click here to select your .csv file</span>
+              <span style={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                {isDragging ? 'Drop CSV here' : 'Click or Drag & Drop .csv file here'}
+              </span>
             </div>
           )}
         </label>

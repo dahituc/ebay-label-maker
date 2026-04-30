@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Activity, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { Key, Activity, Save, CheckCircle, AlertCircle, Layout } from 'lucide-react';
 import { getSetting, saveSetting, getDailyUsage } from '../db/database';
 
 export default function Settings() {
@@ -8,15 +8,28 @@ export default function Settings() {
   const [dailyUsage, setDailyUsage] = useState(0);
   const maxUsage = 3000;
 
+  const [useGeoApify, setUseGeoApify] = useState(true);
+  const [labelWidth, setLabelWidth] = useState(90);
+  const [labelHeight, setLabelHeight] = useState(30);
+
   useEffect(() => {
     const loadData = async () => {
       try {
         const savedKey = await getSetting('geoapify_api_key');
         if (savedKey) setApiKey(savedKey);
 
+        const savedUseGeo = await getSetting('use_geoapify');
+        if (savedUseGeo !== null) setUseGeoApify(savedUseGeo === 'true');
+
         const today = new Date().toISOString().split('T')[0];
         const usageCount = await getDailyUsage(today);
         setDailyUsage(usageCount);
+
+        const savedWidth = await getSetting('label_width');
+        if (savedWidth) setLabelWidth(parseInt(savedWidth, 10));
+
+        const savedHeight = await getSetting('label_height');
+        if (savedHeight) setLabelHeight(parseInt(savedHeight, 10));
       } catch (error) {
         console.error('Error loading settings:', error);
       }
@@ -27,10 +40,18 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       await saveSetting('geoapify_api_key', apiKey);
+      await saveSetting('use_geoapify', useGeoApify.toString());
+      await saveSetting('label_width', labelWidth.toString());
+      await saveSetting('label_height', labelHeight.toString());
+      
+      // Update CSS variables immediately
+      document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
+      document.documentElement.style.setProperty('--label-height', `${labelHeight}mm`);
+      
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
-      console.error('Error saving API key:', error);
+      console.error('Error saving settings:', error);
     }
   };
 
@@ -60,7 +81,20 @@ export default function Settings() {
           Configure your Geoapify API key. This is required to seamlessly validate addresses that fail local offline validation.
         </p>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+            <input 
+              type="checkbox" 
+              id="useGeoApify"
+              checked={useGeoApify}
+              onChange={(e) => setUseGeoApify(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <label htmlFor="useGeoApify" style={{ fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', flex: 1 }}>
+              Enable Geoapify Address Validation
+            </label>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
             <input 
@@ -68,6 +102,7 @@ export default function Settings() {
               placeholder="Enter your API key" 
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              disabled={!useGeoApify}
               style={{ 
                 padding: '12px 14px', 
                 borderRadius: 'var(--radius-sm)', 
@@ -77,7 +112,8 @@ export default function Settings() {
                 width: '100%',
                 fontSize: '1rem',
                 outline: 'none',
-                transition: 'var(--transition)'
+                transition: 'var(--transition)',
+                opacity: useGeoApify ? 1 : 0.6
               }} 
               onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
               onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
@@ -107,6 +143,75 @@ export default function Settings() {
             {isSaved ? 'Saved Successfully' : 'Save Settings'}
           </button>
         </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Layout size={20} />
+          Label Configuration
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          Set the dimensions for your thermal labels. The defaults are optimized for 90mm x 30mm labels.
+        </p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Width (mm)</label>
+            <input 
+              type="number" 
+              value={labelWidth}
+              onChange={(e) => setLabelWidth(parseInt(e.target.value, 10) || 0)}
+              style={{ 
+                padding: '12px 14px', 
+                borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                width: '100%',
+                fontSize: '1rem',
+                outline: 'none'
+              }} 
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Height (mm)</label>
+            <input 
+              type="number" 
+              value={labelHeight}
+              onChange={(e) => setLabelHeight(parseInt(e.target.value, 10) || 0)}
+              style={{ 
+                padding: '12px 14px', 
+                borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                width: '100%',
+                fontSize: '1rem',
+                outline: 'none'
+              }} 
+            />
+          </div>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          style={{
+            background: 'var(--accent)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 20px',
+            borderRadius: 'var(--radius-sm)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'var(--transition)'
+          }}
+        >
+          {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+          {isSaved ? 'Saved Successfully' : 'Save Label Size'}
+        </button>
       </div>
 
       <div className="card" style={{ maxWidth: '600px' }}>

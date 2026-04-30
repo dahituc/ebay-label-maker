@@ -98,34 +98,39 @@ export const parseEbayCsv = (fileOrString) => {
           const resultsArray = [];
 
           for (const order of parsedOrders) {
-             const itemsString = order.items.map(i => `${i.customLabel} X <b>${i.quantity}</b>`).join('<br/>');
+             const orderItems = order.items.map(i => `${i.customLabel} X <b>${i.quantity}</b>`);
 
              if (order.postageService !== "Australia Post Domestic Regular Letter Untracked") {
-                resultsArray.push({
-                   orderIds: order.orderNumber,
-                   buyerUsername: order.buyerUsername,
-                   name: order.postToName,
-                   address1: order.address1,
-                   address2: order.address2,
-                   city: order.city,
-                   state: order.state,
-                   postcode: order.postcode,
-                   country: order.country,
-                   itemsSummary: itemsString,
-                   manualFlag: true,
-                   postageService: order.postageService,
-                   buyerNote: order.buyerNote,
-                });
+                // For manual orders, we still want to split if items > 2
+                for (let i = 0; i < orderItems.length; i += 2) {
+                    const chunk = orderItems.slice(i, i + 2);
+                    resultsArray.push({
+                       orderIds: order.orderNumber,
+                       buyerUsername: order.buyerUsername,
+                       name: order.postToName,
+                       address1: order.address1,
+                       address2: order.address2,
+                       city: order.city,
+                       state: order.state,
+                       postcode: order.postcode,
+                       country: order.country,
+                       itemsSummary: chunk.join('<br/>'),
+                       manualFlag: true,
+                       postageService: order.postageService,
+                       buyerNote: order.buyerNote,
+                       isExtra: i > 0
+                    });
+                }
                 continue;
              }
 
-             const rawAddress = [order.address1, order.address2, order.city, order.state, order.postcode].filter(Boolean).join(', ').toLowerCase();
+             const rawAddress = [order.address2, order.city, order.state, order.postcode].filter(Boolean).join(', ').toLowerCase();
              const mergeKey = `${order.buyerUsername}-${rawAddress}`;
 
              if (consolidatedMap.has(mergeKey)) {
                 const existing = consolidatedMap.get(mergeKey);
                 existing.orderNumbers.push(order.orderNumber);
-                existing.combinedItems.push(itemsString);
+                existing.combinedItems.push(...orderItems);
              } else {
                 consolidatedMap.set(mergeKey, {
                    orderNumbers: [order.orderNumber],
@@ -137,7 +142,7 @@ export const parseEbayCsv = (fileOrString) => {
                    state: order.state,
                    postcode: order.postcode,
                    country: order.country,
-                   combinedItems: [itemsString].filter(Boolean),
+                   combinedItems: [...orderItems],
                    buyerNote: order.buyerNote
                 });
              }
@@ -145,19 +150,24 @@ export const parseEbayCsv = (fileOrString) => {
 
           // Final output formatting for consolidated
           for (const [key, merged] of consolidatedMap.entries()) {
-             resultsArray.push({
-                orderIds: merged.orderNumbers.join(', '), // Could be multiple
-                buyerUsername: merged.buyerUsername,
-                name: merged.postToName,
-                address1: merged.address1,
-                address2: merged.address2,
-                city: merged.city,
-                state: merged.state,
-                postcode: merged.postcode,
-                country: merged.country,
-                itemsSummary: merged.combinedItems.join(' + '),
-                buyerNote: merged.buyerNote
-             });
+             const items = merged.combinedItems;
+             for (let i = 0; i < items.length; i += 2) {
+                const chunk = items.slice(i, i + 2);
+                resultsArray.push({
+                   orderIds: merged.orderNumbers.join(', '), // Could be multiple
+                   buyerUsername: merged.buyerUsername,
+                   name: merged.postToName,
+                   address1: merged.address1,
+                   address2: merged.address2,
+                   city: merged.city,
+                   state: merged.state,
+                   postcode: merged.postcode,
+                   country: merged.country,
+                   itemsSummary: chunk.join('<br/>'),
+                   buyerNote: merged.buyerNote,
+                   isExtra: i > 0
+                });
+             }
           }
 
           resolve(resultsArray);
