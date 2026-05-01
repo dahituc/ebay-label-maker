@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getSetting, saveSetting, getDailyUsage } from '../db/database';
+import { getSetting, saveSetting, getDailyUsage, db } from '../db/database';
 import { applyLabelFont } from '../services/fontLoader';
-import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search } from 'lucide-react';
+import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search, Trash2 } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const POPULAR_FONTS = [
   'Arial', 'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 
@@ -21,6 +22,7 @@ export default function Settings() {
   const [fontSearch, setFontSearch] = useState('');
   const [allFonts, setAllFonts] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -87,6 +89,25 @@ export default function Settings() {
     }
   };
 
+  const handleResetApp = async () => {
+    try {
+      // Clear data tables but keep settings
+      await db.transaction('rw', [db.orders, db.csv_logs, db.daily_usage], async () => {
+        await db.orders.clear();
+        await db.csv_logs.clear();
+        await db.daily_usage.clear();
+      });
+      // Optionally reset daily usage in state
+      setDailyUsage(0);
+      setShowResetDialog(false);
+      // Hard reload to clear any memory states
+      window.location.reload();
+    } catch (error) {
+      console.error('Error resetting app:', error);
+      alert('Failed to reset application data.');
+    }
+  };
+
   const filteredFonts = fontSearch.length > 1 
     ? allFonts.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).slice(0, 10)
     : [];
@@ -108,7 +129,13 @@ export default function Settings() {
         <p style={{ color: 'var(--text-secondary)' }}>Manage your application configuration and API quotas.</p>
       </div>
 
-      <div className="card" style={{ maxWidth: '600px' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', 
+        gap: '24px',
+        alignItems: 'start'
+      }}>
+        <div className="card" style={{ height: '100%' }}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Key size={20} />
           API Integrations
@@ -179,9 +206,9 @@ export default function Settings() {
             {isSaved ? 'Saved Successfully' : 'Save Settings'}
           </button>
         </div>
-      </div>
+        </div>
 
-      <div className="card" style={{ maxWidth: '600px' }}>
+        <div className="card" style={{ height: '100%' }}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Layout size={20} />
           Label Configuration
@@ -368,9 +395,9 @@ export default function Settings() {
           {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
           {isSaved ? 'Saved Successfully' : 'Save Label Config'}
         </button>
-      </div>
+        </div>
 
-      <div className="card" style={{ maxWidth: '600px' }}>
+        <div className="card" style={{ height: '100%' }}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Activity size={20} />
           API Daily Usage Quota
@@ -400,8 +427,59 @@ export default function Settings() {
               You are approaching your daily free limit!
             </div>
           )}
+          </div>
+        </div>
+
+        <div className="card" style={{ borderTop: '4px solid var(--danger)', height: '100%' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--danger)' }}>
+          <Trash2 size={20} />
+          Danger Zone
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          If you are experiencing database errors or want to start fresh, you can reset all application data. 
+          Your <strong>API Key</strong> and <strong>Label Settings</strong> will be preserved.
+        </p>
+
+        <button 
+          onClick={() => setShowResetDialog(true)}
+          style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            color: 'var(--danger)',
+            border: '1px solid var(--danger)',
+            padding: '12px 20px',
+            borderRadius: 'var(--radius-sm)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'var(--transition)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = 'var(--danger)';
+            e.currentTarget.style.color = 'white';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+            e.currentTarget.style.color = 'var(--danger)';
+          }}
+        >
+          <Trash2 size={18} />
+          Reset Application Data
+        </button>
         </div>
       </div>
+
+      <ConfirmDialog 
+        isOpen={showResetDialog}
+        onClose={() => setShowResetDialog(false)}
+        onConfirm={handleResetApp}
+        title="Reset Application Data?"
+        message="This will permanently delete all uploaded batches, orders, and usage logs. Your API key and label preferences will NOT be affected. This action cannot be undone."
+        confirmText="Yes, Reset Data"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 }

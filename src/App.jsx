@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Review from './pages/Review';
 import Labels from './pages/Labels';
+import Guide from './pages/Guide';
 import { getSetting } from './db/database';
 import { applyLabelFont } from './services/fontLoader';
 
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/review" element={<Review />} />
                 <Route path="/labels" element={<Labels />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/guide" element={<Guide />} />
               </Routes>
             </ErrorBoundary>
           </main>

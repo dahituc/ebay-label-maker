@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import AppLogo from './AppLogo';
 
 function getInitialTheme() {
   const saved = localStorage.getItem('ebay-label-theme');
@@ -33,9 +34,20 @@ export default function Sidebar({ className = "" }) {
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${className}`}>
       {/* Header */}
-      <div className="sidebar-header">
-        <Box color="var(--accent)" size={28} style={{ flexShrink: 0 }} />
-        {!collapsed && <h2 style={{ margin: 0, whiteSpace: 'nowrap' }}>Label Maker</h2>}
+      <div className="sidebar-header" style={{ alignItems: 'center', padding: collapsed ? '20px 0' : '20px' }}>
+        <AppLogo size={collapsed ? 32 : 36} style={{ flexShrink: 0 }} />
+        {!collapsed && (
+          <h2 style={{ 
+            margin: 0, 
+            lineHeight: '1.1', 
+            fontSize: '1.2rem',
+            fontWeight: 800,
+            letterSpacing: '-0.5px'
+          }}>
+            ebay<br />
+            Label Maker
+          </h2>
+        )}
       </div>
 
       {/* Collapse toggle */}
@@ -75,6 +87,10 @@ export default function Sidebar({ className = "" }) {
         <NavLink to="/settings" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Settings" style={{ marginTop: '4px' }}>
           <Settings />
           {!collapsed && <span>Settings</span>}
+        </NavLink>
+        <NavLink to="/guide" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="User Guide" style={{ marginTop: '4px' }}>
+          <BookOpen />
+          {!collapsed && <span>User Guide</span>}
         </NavLink>
       </nav>
     </aside>
