@@ -3,6 +3,8 @@
   "homepage": "https://dahituc.github.io/ebay-label-maker/",
   "private": true,
   "version": "0.0.0",
+  "description": "A streamlined tool for processing eBay order CSVs and generating optimized thermal labels.\nFeatures address validation, batch isolation, and customizable printing layouts.",
+  "author": "Umesh C <dahituc@gmail.com>",
   "type": "module",
   "scripts": {
     "dev": "vite",

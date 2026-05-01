@@ -2,34 +2,41 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import AppLogo from './AppLogo';
-
-function getInitialTheme() {
-  const saved = localStorage.getItem('ebay-label-theme');
-  if (saved) return saved;
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-  return 'light';
-}
+import { getSetting, saveSetting } from '../db/database';
 
 function getInitialCollapsed() {
   return localStorage.getItem('ebay-label-sidebar') === 'collapsed';
 }
 
 export default function Sidebar({ className = "" }) {
-  const [theme, setTheme] = useState(getInitialTheme);
+  const [theme, setTheme] = useState('light');
   const [collapsed, setCollapsed] = useState(getInitialCollapsed);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ebay-label-theme', theme);
-  }, [theme]);
+    const loadTheme = async () => {
+      const saved = await getSetting('theme');
+      if (saved) {
+        setTheme(saved);
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    };
+    loadTheme();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ebay-label-sidebar', collapsed ? 'collapsed' : 'expanded');
   }, [collapsed]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  const toggleTheme = async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    await saveSetting('theme', newTheme);
   };
+
 
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${className}`}>
