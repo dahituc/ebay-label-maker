@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Activity, Save, CheckCircle, AlertCircle, Layout } from 'lucide-react';
-import { getSetting, saveSetting, getDailyUsage } from '../db/database';
+import { getSetting, saveSetting, getDailyUsage, db } from '../db/database';
+import { applyLabelFont } from '../services/fontLoader';
+import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search, Trash2, Sun, Moon, Box, Settings as SettingsIcon, Eye, RotateCcw } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
+import PreviewDialog from '../components/PreviewDialog';
+
+const POPULAR_FONTS = [
+  'Arial', 'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 
+  'Oswald', 'Raleway', 'PT Sans', 'Ubuntu', 'Nunito'
+];
 
 export default function Settings() {
   const [apiKey, setApiKey] = useState('');
@@ -11,6 +19,14 @@ export default function Settings() {
   const [useGeoApify, setUseGeoApify] = useState(true);
   const [labelWidth, setLabelWidth] = useState(90);
   const [labelHeight, setLabelHeight] = useState(30);
+  const [selectedFont, setSelectedFont] = useState('Arial');
+  const [selectedPalette, setSelectedPalette] = useState('indigo');
+  const [currentTheme, setCurrentTheme] = useState('light');
+  const [fontSearch, setFontSearch] = useState('');
+  const [allFonts, setAllFonts] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -30,6 +46,22 @@ export default function Settings() {
 
         const savedHeight = await getSetting('label_height');
         if (savedHeight) setLabelHeight(parseInt(savedHeight, 10));
+
+        const savedFont = await getSetting('label_font');
+        if (savedFont) setSelectedFont(savedFont);
+
+        const savedPalette = await getSetting('palette');
+        if (savedPalette) setSelectedPalette(savedPalette);
+
+        const savedTheme = await getSetting('theme');
+        if (savedTheme) setCurrentTheme(savedTheme);
+
+        // Fetch font list for search
+        const res = await fetch('https://cdn.jsdelivr.net/gh/hasinhayder/google-fonts/subsets/latin/display/fonts.json');
+        const data = await res.json();
+        if (data && data.fonts) {
+          setAllFonts(data.fonts);
+        }
       } catch (error) {
         console.error('Error loading settings:', error);
       }
@@ -37,16 +69,37 @@ export default function Settings() {
     loadData();
   }, []);
 
+  // Live preview the font and dimensions when they change
+  useEffect(() => {
+    applyLabelFont(selectedFont);
+  }, [selectedFont]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
+    document.documentElement.style.setProperty('--label-height', `${labelHeight}mm`);
+  }, [labelWidth, labelHeight]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-palette', selectedPalette);
+    document.documentElement.setAttribute('data-theme', currentTheme);
+  }, [selectedPalette, currentTheme]);
+
   const handleSave = async () => {
     try {
       await saveSetting('geoapify_api_key', apiKey);
       await saveSetting('use_geoapify', useGeoApify.toString());
       await saveSetting('label_width', labelWidth.toString());
       await saveSetting('label_height', labelHeight.toString());
+      await saveSetting('label_font', selectedFont);
+      await saveSetting('palette', selectedPalette);
+      await saveSetting('theme', currentTheme);
       
       // Update CSS variables immediately
       document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
       document.documentElement.style.setProperty('--label-height', `${labelHeight}mm`);
+      document.documentElement.setAttribute('data-palette', selectedPalette);
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      applyLabelFont(selectedFont);
       
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
@@ -55,6 +108,56 @@ export default function Settings() {
     }
   };
 
+  const handleResetLabelConfig = async () => {
+    try {
+      const savedWidth = await getSetting('label_width');
+      if (savedWidth) setLabelWidth(parseInt(savedWidth, 10));
+      else setLabelWidth(90);
+
+      const savedHeight = await getSetting('label_height');
+      if (savedHeight) setLabelHeight(parseInt(savedHeight, 10));
+      else setLabelHeight(30);
+
+      const savedFont = await getSetting('label_font');
+      if (savedFont) setSelectedFont(savedFont);
+      else setSelectedFont('Arial');
+    } catch (error) {
+      console.error('Error resetting label config:', error);
+    }
+  };
+
+  const handleResetApp = async () => {
+    try {
+      // Save current configuration before resetting
+      await saveSetting('geoapify_api_key', apiKey);
+      await saveSetting('use_geoapify', useGeoApify.toString());
+      await saveSetting('label_width', labelWidth.toString());
+      await saveSetting('label_height', labelHeight.toString());
+      await saveSetting('label_font', selectedFont);
+      await saveSetting('palette', selectedPalette);
+      await saveSetting('theme', currentTheme);
+
+      // Clear data tables but keep settings
+      await db.transaction('rw', [db.orders, db.csv_logs, db.daily_usage], async () => {
+        await db.orders.clear();
+        await db.csv_logs.clear();
+        await db.daily_usage.clear();
+      });
+      // Optionally reset daily usage in state
+      setDailyUsage(0);
+      setShowResetDialog(false);
+      // Hard reload to clear any memory states
+      window.location.reload();
+    } catch (error) {
+      console.error('Error resetting app:', error);
+      alert('Failed to reset application data.');
+    }
+  };
+
+  const filteredFonts = fontSearch.length > 1 
+    ? allFonts.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).slice(0, 10)
+    : [];
+
   const usagePercentage = Math.min((dailyUsage / maxUsage) * 100, 100);
   const getUsageColor = () => {
     if (usagePercentage < 50) return 'var(--success)';
@@ -62,70 +165,469 @@ export default function Settings() {
     return 'var(--danger)';
   };
 
+  const PALETTES = [
+    { id: 'indigo', name: 'Indigo Night', color: '#3b82f6' },
+    { id: 'emerald', name: 'Emerald Garden', color: '#10b981' },
+    { id: 'rose', name: 'Rose Petal', color: '#f43f5e' }
+  ];
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       <div>
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Key size={28} color="var(--accent)" />
+          <SettingsIcon size={28} color="var(--accent)" />
           Settings
         </h1>
+
         <p style={{ color: 'var(--text-secondary)' }}>Manage your application configuration and API quotas.</p>
       </div>
 
-      <div className="card" style={{ maxWidth: '600px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Key size={20} />
-          API Integrations
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-          Configure your Geoapify API key. This is required to seamlessly validate addresses that fail local offline validation.
-        </p>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-            <input 
-              type="checkbox" 
-              id="useGeoApify"
-              checked={useGeoApify}
-              onChange={(e) => setUseGeoApify(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <label htmlFor="useGeoApify" style={{ fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', flex: 1 }}>
-              Enable Geoapify Address Validation
-            </label>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', 
+        gap: '24px',
+        alignItems: 'start'
+      }}>
+        <div className="card" style={{ height: '100%' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Key size={20} />
+            API & Quotas
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            Configure your Geoapify API key and monitor your daily batch processing limits.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+              <input 
+                type="checkbox" 
+                id="useGeoApify"
+                checked={useGeoApify}
+                onChange={(e) => setUseGeoApify(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="useGeoApify" style={{ fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', flex: 1 }}>
+                Enable Geoapify Address Validation
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
+              <input 
+                type="password" 
+                placeholder="Enter your API key" 
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                disabled={!useGeoApify}
+                style={{ 
+                  padding: '12px 14px', 
+                  borderRadius: 'var(--radius-sm)', 
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  width: '100%',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'var(--transition)',
+                  opacity: useGeoApify ? 1 : 0.6
+                }} 
+              />
+            </div>
+
+            {/* Daily Usage Section Merged Here */}
+            <div style={{ marginTop: '8px', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
+                <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Activity size={16} color="var(--accent)" />
+                  API Quota Usage
+                </span>
+                <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{usagePercentage.toFixed(0)}%</span>
+              </div>
+              
+              <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ 
+                  width: `${usagePercentage}%`, 
+                  backgroundColor: getUsageColor(), 
+                  height: '100%',
+                  transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                }} />
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                <span>0</span>
+                <span>{dailyUsage.toLocaleString()} used</span>
+                <span>{maxUsage.toLocaleString()}</span>
+              </div>
+            </div>
+
+            
+            <button 
+              onClick={handleSave}
+              style={{
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                alignSelf: 'flex-start',
+                transition: 'var(--transition)'
+              }}
+            >
+              {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+              {isSaved ? 'Saved Successfully' : 'Save API Settings'}
+            </button>
+          </div>
+        </div>
+
+        <div className="card" style={{ height: '100%' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Layout size={20} />
+            Theme & Appearance
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            Customize the look and feel of your workspace with premium color palettes and themes.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '12px' }}>Color Palette</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                {PALETTES.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPalette(p.id)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '2px solid',
+                      borderColor: selectedPalette === p.id ? 'var(--accent)' : 'var(--border)',
+                      background: selectedPalette === p.id ? 'var(--accent-soft)' : 'var(--bg-primary)',
+                      cursor: 'pointer',
+                      transition: 'var(--transition)'
+                    }}
+                  >
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: p.color, border: '2px solid white', boxShadow: '0 0 0 1px var(--border)' }}></div>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: selectedPalette === p.id ? 'var(--accent)' : 'var(--text-primary)' }}>{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '12px' }}>Mode</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setCurrentTheme('light')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    padding: '12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '2px solid',
+                    borderColor: currentTheme === 'light' ? 'var(--accent)' : 'var(--border)',
+                    background: currentTheme === 'light' ? 'var(--accent-soft)' : 'var(--bg-primary)',
+                    color: currentTheme === 'light' ? 'var(--accent)' : 'var(--text-primary)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'var(--transition)'
+                  }}
+                >
+                  <Sun size={18} />
+                  Light
+                </button>
+                <button
+                  onClick={() => setCurrentTheme('dark')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    padding: '12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '2px solid',
+                    borderColor: currentTheme === 'dark' ? 'var(--accent)' : 'var(--border)',
+                    background: currentTheme === 'dark' ? 'var(--accent-soft)' : 'var(--bg-primary)',
+                    color: currentTheme === 'dark' ? 'var(--accent)' : 'var(--text-primary)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'var(--transition)'
+                  }}
+                >
+                  <Moon size={18} />
+                  Dark
+                </button>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleSave}
+              style={{
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                alignSelf: 'flex-start',
+                transition: 'var(--transition)'
+              }}
+            >
+              {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+              {isSaved ? 'Saved Successfully' : 'Apply Appearance'}
+            </button>
+          </div>
+        </div>
+
+        <div className="card" style={{ height: '100%' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Box size={20} />
+            Label Configuration
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            Set the dimensions and typography for your thermal labels.
+          </p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Width (mm)</label>
+              <input 
+                type="number" 
+                value={labelWidth}
+                onChange={(e) => setLabelWidth(parseInt(e.target.value, 10) || 0)}
+                style={{ 
+                  padding: '12px 14px', 
+                  borderRadius: 'var(--radius-sm)', 
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  width: '100%',
+                  fontSize: '1rem',
+                  outline: 'none'
+                }} 
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Height (mm)</label>
+              <input 
+                type="number" 
+                value={labelHeight}
+                onChange={(e) => setLabelHeight(parseInt(e.target.value, 10) || 0)}
+                style={{ 
+                  padding: '12px 14px', 
+                  borderRadius: 'var(--radius-sm)', 
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  width: '100%',
+                  fontSize: '1rem',
+                  outline: 'none'
+                }} 
+              />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
-            <input 
-              type="password" 
-              placeholder="Enter your API key" 
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              disabled={!useGeoApify}
-              style={{ 
-                padding: '12px 14px', 
-                borderRadius: 'var(--radius-sm)', 
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                width: '100%',
-                fontSize: '1rem',
-                outline: 'none',
-                transition: 'var(--transition)',
-                opacity: useGeoApify ? 1 : 0.6
-              }} 
-              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <Type size={18} color="var(--accent)" />
+              <span style={{ fontWeight: 600 }}>Label Font</span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {[...POPULAR_FONTS, ...(POPULAR_FONTS.includes(selectedFont) ? [] : [selectedFont])].map(font => (
+                <button
+                  key={font}
+                  onClick={() => setSelectedFont(font)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    border: '1px solid',
+                    borderColor: selectedFont === font ? 'var(--accent)' : 'var(--border)',
+                    background: selectedFont === font ? 'var(--accent)' : 'var(--bg-secondary)',
+                    color: selectedFont === font ? 'white' : 'var(--text-primary)',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'var(--transition)',
+                    fontFamily: font === 'Arial' ? 'Arial' : `'${font}', sans-serif`
+                  }}
+                >
+                  {font}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ position: 'relative', marginTop: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                <Search size={16} color="var(--text-secondary)" />
+                <input 
+                  type="text" 
+                  placeholder="Search all Google Fonts..." 
+                  value={fontSearch}
+                  onChange={(e) => setFontSearch(e.target.value)}
+                  style={{ 
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--text-primary)',
+                    width: '100%',
+                    fontSize: '0.9rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              {filteredFonts.length > 0 && (
+                <div style={{ 
+                  position: 'absolute', 
+                  top: '100%', 
+                  left: 0, 
+                  right: 0, 
+                  zIndex: 10, 
+                  background: 'var(--bg-secondary)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: 'var(--radius-sm)', 
+                  marginTop: '4px',
+                  boxShadow: 'var(--shadow-lg)',
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  {filteredFonts.map(font => (
+                    <div 
+                      key={font}
+                      onClick={() => {
+                        setSelectedFont(font);
+                        setFontSearch('');
+                      }}
+                      style={{ 
+                        padding: '10px 16px', 
+                        cursor: 'pointer', 
+                        borderBottom: '1px solid var(--border)',
+                        transition: 'var(--transition)',
+                        fontFamily: `'${font}', sans-serif`
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-primary)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {font}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Selected:</span>
+               <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: `'${selectedFont}', sans-serif` }}>{selectedFont}</span>
+            </div>
           </div>
-          
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              onClick={handleSave}
+              style={{
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'var(--transition)'
+              }}
+            >
+              {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+              {isSaved ? 'Saved Successfully' : 'Save Label Config'}
+            </button>
+
+            <button 
+              onClick={() => setShowPreviewDialog(true)}
+              style={{
+                background: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border)',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'var(--transition)'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+            >
+              <Eye size={18} />
+              Preview Label
+            </button>
+
+            <button 
+              onClick={handleResetLabelConfig}
+              style={{
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: '1px solid transparent',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'var(--transition)',
+                marginLeft: 'auto'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.color = 'var(--accent)';
+                e.currentTarget.style.background = 'var(--bg-primary)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <RotateCcw size={16} />
+              Reset
+            </button>
+          </div>
+        </div>
+
+
+
+        <div className="card" style={{ borderTop: '4px solid var(--danger)', height: '100%' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--danger)' }}>
+            <Trash2 size={20} />
+            Danger Zone
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            Wipe all transaction data, including uploaded batches, orders, and processing history. 
+            Your <strong>API configuration</strong> and <strong>visual preferences</strong> will be automatically saved and preserved.
+          </p>
+
           <button 
-            onClick={handleSave}
+            onClick={() => setShowResetDialog(true)}
             style={{
-              background: 'var(--accent)',
-              color: 'white',
-              border: 'none',
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: 'var(--danger)',
+              border: '1px solid var(--danger)',
               padding: '12px 20px',
               borderRadius: 'var(--radius-sm)',
               fontWeight: 600,
@@ -133,119 +635,42 @@ export default function Settings() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              alignSelf: 'flex-start',
               transition: 'var(--transition)'
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'var(--accent)'}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'var(--danger)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+              e.currentTarget.style.color = 'var(--danger)';
+            }}
           >
-            {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
-            {isSaved ? 'Saved Successfully' : 'Save Settings'}
+            <Trash2 size={18} />
+            Reset Application Data
           </button>
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: '600px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Layout size={20} />
-          Label Configuration
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-          Set the dimensions for your thermal labels. The defaults are optimized for 90mm x 30mm labels.
-        </p>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Width (mm)</label>
-            <input 
-              type="number" 
-              value={labelWidth}
-              onChange={(e) => setLabelWidth(parseInt(e.target.value, 10) || 0)}
-              style={{ 
-                padding: '12px 14px', 
-                borderRadius: 'var(--radius-sm)', 
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                width: '100%',
-                fontSize: '1rem',
-                outline: 'none'
-              }} 
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Height (mm)</label>
-            <input 
-              type="number" 
-              value={labelHeight}
-              onChange={(e) => setLabelHeight(parseInt(e.target.value, 10) || 0)}
-              style={{ 
-                padding: '12px 14px', 
-                borderRadius: 'var(--radius-sm)', 
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                width: '100%',
-                fontSize: '1rem',
-                outline: 'none'
-              }} 
-            />
-          </div>
-        </div>
+      <ConfirmDialog 
+        isOpen={showResetDialog}
+        onCancel={() => setShowResetDialog(false)}
+        onConfirm={handleResetApp}
+        title="Reset Application Data?"
+        message="This will permanently delete all uploaded batches, orders, and usage logs. Your current API key, theme, and label configurations will be saved and preserved. This action cannot be undone."
+        confirmText="Yes, Reset Data"
+        cancelText="Cancel"
+        type="danger"
+      />
 
-        <button 
-          onClick={handleSave}
-          style={{
-            background: 'var(--accent)',
-            color: 'white',
-            border: 'none',
-            padding: '12px 20px',
-            borderRadius: 'var(--radius-sm)',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'var(--transition)'
-          }}
-        >
-          {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
-          {isSaved ? 'Saved Successfully' : 'Save Label Size'}
-        </button>
-      </div>
-
-      <div className="card" style={{ maxWidth: '600px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Activity size={20} />
-          API Daily Usage Quota
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-          Monitor your Geoapify batch processing limits to avoid overages. The free tier allows up to 3,000 validations per day.
-        </p>
-
-        <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontWeight: 600 }}>
-            <span>Requests Used</span>
-            <span>{dailyUsage.toLocaleString()} / {maxUsage.toLocaleString()}</span>
-          </div>
-          
-          <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
-            <div style={{ 
-              width: `${usagePercentage}%`, 
-              backgroundColor: getUsageColor(), 
-              height: '100%',
-              transition: 'width 0.5s ease-in-out' 
-            }} />
-          </div>
-
-          {usagePercentage >= 90 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 500 }}>
-              <AlertCircle size={16} />
-              You are approaching your daily free limit!
-            </div>
-          )}
-        </div>
-      </div>
+      <PreviewDialog 
+        isOpen={showPreviewDialog}
+        onClose={() => setShowPreviewDialog(false)}
+        selectedFont={selectedFont}
+        labelWidth={labelWidth}
+        labelHeight={labelHeight}
+      />
     </div>
   );
 }
+

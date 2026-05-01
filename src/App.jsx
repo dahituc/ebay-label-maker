@@ -6,17 +6,26 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Review from './pages/Review';
 import Labels from './pages/Labels';
+import Guide from './pages/Guide';
 import { getSetting } from './db/database';
+import { applyLabelFont } from './services/fontLoader';
 
 function App() {
   useEffect(() => {
-    const applyLabelSettings = async () => {
+    const applyGlobalSettings = async () => {
       const width = await getSetting('label_width');
       const height = await getSetting('label_height');
+      const font = await getSetting('label_font');
+      const theme = await getSetting('theme');
+      const palette = await getSetting('palette');
+      
       if (width) document.documentElement.style.setProperty('--label-width', `${width}mm`);
       if (height) document.documentElement.style.setProperty('--label-height', `${height}mm`);
+      if (font) applyLabelFont(font);
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+      if (palette) document.documentElement.setAttribute('data-palette', palette);
     };
-    applyLabelSettings();
+    applyGlobalSettings();
   }, []);
 
   return (
@@ -32,6 +41,7 @@ function App() {
                 <Route path="/review" element={<Review />} />
                 <Route path="/labels" element={<Labels />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/guide" element={<Guide />} />
               </Routes>
             </ErrorBoundary>
           </main>

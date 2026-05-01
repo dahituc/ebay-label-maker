@@ -1,41 +1,60 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-
-function getInitialTheme() {
-  const saved = localStorage.getItem('ebay-label-theme');
-  if (saved) return saved;
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-  return 'light';
-}
+import AppLogo from './AppLogo';
+import { getSetting, saveSetting } from '../db/database';
 
 function getInitialCollapsed() {
   return localStorage.getItem('ebay-label-sidebar') === 'collapsed';
 }
 
 export default function Sidebar({ className = "" }) {
-  const [theme, setTheme] = useState(getInitialTheme);
+  const [theme, setTheme] = useState('light');
   const [collapsed, setCollapsed] = useState(getInitialCollapsed);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ebay-label-theme', theme);
-  }, [theme]);
+    const loadTheme = async () => {
+      const saved = await getSetting('theme');
+      if (saved) {
+        setTheme(saved);
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    };
+    loadTheme();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ebay-label-sidebar', collapsed ? 'collapsed' : 'expanded');
   }, [collapsed]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  const toggleTheme = async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    await saveSetting('theme', newTheme);
   };
+
 
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${className}`}>
       {/* Header */}
-      <div className="sidebar-header">
-        <Box color="var(--accent)" size={28} style={{ flexShrink: 0 }} />
-        {!collapsed && <h2 style={{ margin: 0, whiteSpace: 'nowrap' }}>Label Maker</h2>}
+      <div className="sidebar-header" style={{ alignItems: 'center', padding: collapsed ? '20px 0' : '20px' }}>
+        <AppLogo size={collapsed ? 32 : 36} style={{ flexShrink: 0 }} />
+        {!collapsed && (
+          <h2 style={{ 
+            margin: 0, 
+            lineHeight: '1.1', 
+            fontSize: '1.2rem',
+            fontWeight: 800,
+            letterSpacing: '-0.5px'
+          }}>
+            ebay<br />
+            Label Maker
+          </h2>
+        )}
       </div>
 
       {/* Collapse toggle */}
@@ -75,6 +94,10 @@ export default function Sidebar({ className = "" }) {
         <NavLink to="/settings" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Settings" style={{ marginTop: '4px' }}>
           <Settings />
           {!collapsed && <span>Settings</span>}
+        </NavLink>
+        <NavLink to="/guide" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="User Guide" style={{ marginTop: '4px' }}>
+          <BookOpen />
+          {!collapsed && <span>User Guide</span>}
         </NavLink>
       </nav>
     </aside>

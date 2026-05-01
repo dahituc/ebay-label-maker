@@ -5,12 +5,14 @@ import { parseEbayCsv } from '../services/csvParser.js';
 import { validateAddresses } from '../services/addressValidator.js';
 import { db } from '../db/database.js';
 import { UploadCloud, CheckCircle, AlertTriangle, FileText, Clock, Archive, Trash2, Printer, Edit2, Info } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
+  const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const recentLogs = useLiveQuery(() => db.csv_logs.orderBy('id').reverse().limit(5).toArray());
   const allOrders = useLiveQuery(() => db.orders.toArray());
@@ -122,17 +124,29 @@ export default function Dashboard() {
   };
 
   const handleClearAll = async () => {
-    if (!confirm('Clear ALL batches?')) return;
-    await db.orders.clear();
+    setConfirmState({
+      isOpen: true,
+      title: 'Clear All Batches',
+      message: 'Are you sure you want to permanently delete ALL batches and orders? This action cannot be undone.',
+      onConfirm: async () => {
+        await db.orders.clear();
+      }
+    });
   };
 
-  const handleRemoveBatch = async (timestamp) => {
-    if (!confirm('Remove this batch?')) return;
-    const toRemove = allOrders.filter(o => o.batchTimestamp === timestamp);
-    const ids = toRemove.map(o => o.id).filter(Boolean);
-    if (ids.length > 0) {
-      await db.orders.bulkDelete(ids);
-    }
+  const handleRemoveBatch = async (timestamp, filename) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Remove Batch',
+      message: `Are you sure you want to remove the batch "${filename}"?`,
+      onConfirm: async () => {
+        const toRemove = allOrders.filter(o => o.batchTimestamp === timestamp);
+        const ids = toRemove.map(o => o.id).filter(Boolean);
+        if (ids.length > 0) {
+          await db.orders.bulkDelete(ids);
+        }
+      }
+    });
   };
 
   return (
@@ -258,7 +272,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <button
-                      onClick={() => handleRemoveBatch(batch.timestamp)}
+                      onClick={() => handleRemoveBatch(batch.timestamp, batch.filename)}
                       style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '6px 12px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}
                       title="Remove this batch"
                     >
@@ -397,6 +411,14 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

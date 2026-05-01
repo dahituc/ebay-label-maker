@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../db/database.js';
-import { Printer, List, LayoutGrid, ChevronLeft, Edit2 } from 'lucide-react';
+import { Printer, List, LayoutGrid, ChevronLeft, Edit2, CheckCircle } from 'lucide-react';
 
 export default function Labels() {
   const [searchParams] = useSearchParams();
@@ -46,6 +46,12 @@ export default function Labels() {
     });
     setEditingId(null);
     setEditForm(null);
+  };
+
+  const handleToggleAddress = async (order) => {
+    await db.orders.update(order.id, {
+      useGeoAddress: !order.useGeoAddress
+    });
   };
 
   // Determine batch display info
@@ -127,14 +133,29 @@ export default function Labels() {
               return (
                 <div key={order.id} className={`label-item ${isEditing ? 'is-editing' : ''}`} style={{ position: 'relative' }}>
                   {!isEditing && (
-                    <button 
-                      className="print-hide"
-                      onClick={() => handleEditClick(order)}
-                      style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', opacity: 0.7 }}
-                      title="Edit label"
-                    >
-                      <Edit2 size={12} />
-                    </button>
+                    <div className="label-actions print-hide">
+                      {order.geoConfidence >= 0.7 && (
+                        <div className="verified-badge">
+                          <CheckCircle size={10} /> Verified
+                        </div>
+                      )}
+                      {order.geoFormatted && order.geoConfidence >= 0.7 && (
+                        <button 
+                          className="address-toggle-btn"
+                          onClick={() => handleToggleAddress(order)}
+                          title={order.useGeoAddress ? "Switch to CSV Address" : "Switch to API Formatted Address"}
+                        >
+                          <LayoutGrid size={10} /> {order.useGeoAddress ? "CSV" : "API"}
+                        </button>
+                      )}
+                      <button 
+                        className="edit-label-btn"
+                        onClick={() => handleEditClick(order)}
+                        title="Edit label"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
                   )}
 
                   {isEditing ? (
@@ -160,13 +181,25 @@ export default function Labels() {
                         {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
                       </strong>
                       {!order.isExtra && (
-                        <>
-                          <span className="label-address">{order.address1},</span>
-                          <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                        <div className="label-address-container">
+                          {order.useGeoAddress && order.geoFormatted ? (
+                            <>
+                              <span className="label-address">{order.address1}</span>
+                              <span className="label-address is-api">{order.geoFormatted}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="label-address">{order.address1},</span>
+                              <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                            </>
+                          )}
                           {order.country && order.country.toLowerCase() !== 'australia' && (
                             <span className="label-address">{order.country}</span>
                           )}
-                        </>
+
+                          {/* API Verified Badge moved to top right */}
+                          {/* Toggle moved to top right */}
+                        </div>
                       )}
                       <div style={{ flex: 1 }}></div>
                       <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
@@ -219,10 +252,32 @@ export default function Labels() {
                         </div>
                       ) : (
                         !order.isExtra ? (
-                          <>
-                            <span className="label-address">{order.address1},</span>
-                            <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
-                          </>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {order.useGeoAddress && order.geoFormatted ? (
+                              <span style={{ fontSize: '0.85rem' }}>{order.geoFormatted} <span style={{ color: 'var(--success)', fontSize: '0.7rem' }}>(API)</span></span>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: '0.85rem' }}>{order.address1},</span>
+                                <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                              </>
+                            )}
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              {order.geoConfidence >= 0.7 && (
+                                <span style={{ fontSize: '0.65rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
+                                  <CheckCircle size={10} /> API Verified
+                                </span>
+                              )}
+                              {order.geoFormatted && order.geoConfidence >= 0.7 && (
+                                <button 
+                                  className="print-hide"
+                                  onClick={() => handleToggleAddress(order)}
+                                  style={{ alignSelf: 'flex-start', fontSize: '0.7rem', padding: '2px 6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--accent)' }}
+                                >
+                                  {order.useGeoAddress ? "Switch to CSV" : "Switch to API Formatted"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         ) : (
                           <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Shipping details omitted</span>
                         )
