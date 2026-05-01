@@ -133,14 +133,29 @@ export default function Labels() {
               return (
                 <div key={order.id} className={`label-item ${isEditing ? 'is-editing' : ''}`} style={{ position: 'relative' }}>
                   {!isEditing && (
-                    <button 
-                      className="print-hide"
-                      onClick={() => handleEditClick(order)}
-                      style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', opacity: 0.7 }}
-                      title="Edit label"
-                    >
-                      <Edit2 size={12} />
-                    </button>
+                    <div className="label-actions print-hide">
+                      {order.geoConfidence >= 0.7 && (
+                        <div className="verified-badge">
+                          <CheckCircle size={10} /> Verified
+                        </div>
+                      )}
+                      {order.geoFormatted && order.geoConfidence >= 0.7 && (
+                        <button 
+                          className="address-toggle-btn"
+                          onClick={() => handleToggleAddress(order)}
+                          title={order.useGeoAddress ? "Switch to CSV Address" : "Switch to API Formatted Address"}
+                        >
+                          <LayoutGrid size={10} /> {order.useGeoAddress ? "CSV" : "API"}
+                        </button>
+                      )}
+                      <button 
+                        className="edit-label-btn"
+                        onClick={() => handleEditClick(order)}
+                        title="Edit label"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
                   )}
 
                   {isEditing ? (
@@ -168,7 +183,10 @@ export default function Labels() {
                       {!order.isExtra && (
                         <div className="label-address-container">
                           {order.useGeoAddress && order.geoFormatted ? (
-                            <span className="label-address">{order.geoFormatted}</span>
+                            <>
+                              <span className="label-address">{order.address1}</span>
+                              <span className="label-address is-api">{order.geoFormatted}</span>
+                            </>
                           ) : (
                             <>
                               <span className="label-address">{order.address1},</span>
@@ -179,23 +197,8 @@ export default function Labels() {
                             <span className="label-address">{order.country}</span>
                           )}
 
-                          {/* API Verified Badge */}
-                          {order.geoConfidence >= 0.7 && (
-                            <div className="print-hide verified-badge">
-                              <CheckCircle size={10} /> Verified
-                            </div>
-                          )}
-                          
-                          {/* Toggle for Geoapify Address */}
-                          {order.geoFormatted && order.geoConfidence >= 0.7 && (
-                            <button 
-                              className="print-hide address-toggle-btn"
-                              onClick={() => handleToggleAddress(order)}
-                              title={order.useGeoAddress ? "Switch to CSV Address" : "Switch to API Formatted Address"}
-                            >
-                              {order.useGeoAddress ? "Use CSV Address" : "Use API Formatted"}
-                            </button>
-                          )}
+                          {/* API Verified Badge moved to top right */}
+                          {/* Toggle moved to top right */}
                         </div>
                       )}
                       <div style={{ flex: 1 }}></div>

@@ -94,7 +94,7 @@ export async function validateAddresses(addresses, deps = {}) {
           ...addr,
           geoConfidence: confidence,
           geoFormatted: result?.formatted || null,
-          useGeoAddress: isApiValid, // Default to true if confidence is high enough
+          useGeoAddress: false, // Default to CSV address as requested
           status: isApiValid ? 'valid' : 'invalid',
           error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
         };
@@ -140,11 +140,11 @@ export async function validateAddresses(addresses, deps = {}) {
       
       return {
         ...addr,
-        geoConfidence: confidence,
-        geoFormatted: result?.formatted || null,
-        useGeoAddress: isApiValid,
-        status: isApiValid ? 'valid' : 'invalid',
-        error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
+          geoConfidence: confidence,
+          geoFormatted: result?.formatted || null,
+          useGeoAddress: false, // Default to CSV address as requested
+          status: isApiValid ? 'valid' : 'invalid',
+          error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
       };
     });
 
