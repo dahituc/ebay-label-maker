@@ -20,6 +20,7 @@
   --radius: 12px;
   --radius-sm: 8px;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --label-font: 'Arial', sans-serif;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Label Dimensions */
@@ -255,7 +256,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--label-font);
   overflow: hidden;
   border-radius: 4px;
 }
@@ -369,6 +370,51 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   transform: none;
 }
 
+.label-address-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.address-toggle-btn {
+  font-size: 0.6rem;
+  padding: 1px 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--accent);
+  align-self: flex-start;
+  margin-top: 2px;
+  font-weight: 600;
+  transition: var(--transition);
+  opacity: 0.7;
+}
+
+.address-toggle-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 100px;
+  margin-top: 4px;
+  align-self: flex-start;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
 /* Print Overrides for 90x30 thermal layout */
 @media print {
   @page {
@@ -382,7 +428,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
     padding: 0;
   }
   
-  .sidebar, .print-hide {
+  .sidebar, .print-hide, .address-toggle-btn, .verified-badge {
     display: none !important;
   }
   
@@ -391,7 +437,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
     margin: 0 !important;
     overflow: visible;
   }
-
+ 
   .labels-page {
     margin: 0;
     padding: 0;
@@ -411,6 +457,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
     background: transparent;
     color: black;
     border-radius: 0;
+    page-break-inside: avoid;
   }
 
   .label-item:not(:last-child) {

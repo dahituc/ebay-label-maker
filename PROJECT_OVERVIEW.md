@@ -10,26 +10,25 @@ A robust, local-first React web application built with Vite to process and manip
    - Stores user settings (like the Geoapify API key), CSV processing logs, and batch API daily usage counters to strictly prevent exceeding the 3,000 free batch validations/day threshold.
 
 2. **Intelligent CSV Processing Pipeline (PapaParse)**
-   - Inputs standard eBay `.csv` formats directly into browser memory.
-   - Handles multi-line records for single orders containing multiple items, properly extracting and correcting data as needed.
-   - Filters out orders explicitly marked as tracked.
-   - Consolidates multiple items on a single order into uniquely formatted Custom Labels (e.g., `[SKU] x [Quantity]`).
-   - Identifies multiple separate orders bound for the exact same `Buyer Username` and `Address`, merging them into one singular outbound shipping label to cut costs.
+   - **Batch Isolation**: Every CSV upload is treated as a distinct "batch," allowing users to manage, review, and print multiple separate files independently.
+   - **Order Grouping**: Consolidates multiple items on a single order into uniquely formatted Custom Labels (e.g., `[SKU] x [Quantity]`).
+   - **Automatic Merging**: Identifies multiple separate orders bound for the exact same `Buyer Username` and `Address`, merging them into one singular outbound shipping label to cut costs.
+   - **Label Splitting**: Automatically splits orders with more than 2 unique items into multiple labels (2 items per label) to maintain readability on small thermal labels.
+   - **Shipping Filters**: Automatically flags orders for "Manual" processing if they use shipping services other than "Australia Post Domestic Regular Letter Untracked."
 
 3. **Hybrid Address Validation**
    - **Phase 1: Local Check**: Implements fast, offline JS checks confirming State-to-Postcode range validity (e.g., VIC strictly mapping to `3000-3999`).
    - **Phase 2: Live Standardisation**: Offloads unrecognized or imperfect formats to the Geoapify batch API, strictly obeying usage thresholds stored in the local cache.
+   - **Address Switching**: Users can toggle between the original CSV-provided address and the standardized Geoapify address directly on the label preview.
 
 4. **Manual Review & Correction**
    - Features a dedicated Review page that clearly maps invalid addresses against their given `Order ID`.
    - Provides manual edit functionality for users to fix validation errors prior to label generation.
 
-5. **UI, Routing & Label Output (Vanilla CSS & React Router)**
-   - Focus is heavily placed on premium aesthetics without using heavyweight UI frameworks or Tailwind.
-   - Features dynamic CSS Variables supporting dark/light variants.
-   - Maps over ONLY the 'valid' grouped orders to render them as actual visual DOM elements.
-   - Keeps CSS structured so switching layouts is easy, utilizing strict 90x30mm thermal label CSS layouts designed using print queries (`@media print` and `@page`).
-   - Provides a dedicated 'Print' button triggering the browser's native `window.print()`.
+5. **Customizable Label Output**
+   - **Dynamic Styling**: Settings page allows users to define custom label dimensions (Width/Height) and choose from a library of Google Fonts, which are applied via CSS variables.
+   - **UI & Routing**: React Router manages navigation between Dashboard, Review, Labels, and Settings views.
+   - **Print Optimization**: Uses strict thermal label CSS layouts designed using print queries (`@media print` and `@page`) with a dedicated 'Print' button triggering `window.print()`.
 
 ## Project File Target Structure
 
@@ -40,11 +39,12 @@ A robust, local-first React web application built with Vite to process and manip
 │   ├── components/         // Reusable React functional components
 │   ├── db/                 // Dexie instances (e.g., database.js)
 │   ├── pages/              // Top-level views (Dashboard, Settings, Labels, Review)
-│   ├── services/           // Business logic (csvParser.js, addressValidator.js)
+│   ├── services/           // Business logic (csvParser.js, addressValidator.js, fontLoader.js)
 │   ├── styles/             // Global variables and main.css
 │   ├── App.jsx             // Base component routing
 │   └── main.jsx            // Vite entrypoint
 ```
 
 ## AI Agent Development Note
-This application aims to look and feel extremely premium out of the box using purely Vanilla CSS or Module CSS. Please refer to `prompts.md` for suggested stage-based implementation cycles.
+This application aims to look and feel extremely premium out of the box using purely Vanilla CSS. No Tailwind or heavyweight UI libraries should be introduced unless explicitly requested.
+

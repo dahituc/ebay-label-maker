@@ -87,13 +87,16 @@ export async function validateAddresses(addresses, deps = {}) {
 
       return addresses.map((addr, index) => {
         const result = apiResults[index];
-        const isApiValid = result && result.rank && result.rank.confidence >= 0.7;
+        const confidence = result?.rank?.confidence || 0;
+        const isApiValid = confidence >= 0.7;
         
         return {
           ...addr,
-          formatted: isApiValid ? result.formatted : null,
+          geoConfidence: confidence,
+          geoFormatted: result?.formatted || null,
+          useGeoAddress: isApiValid, // Default to true if confidence is high enough
           status: isApiValid ? 'valid' : 'invalid',
-          error: isApiValid ? null : 'API could not verify'
+          error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
         };
       });
     } catch (err) {
@@ -132,15 +135,16 @@ export async function validateAddresses(addresses, deps = {}) {
 
     const finalApiResults = unverified.map((addr, index) => {
       const result = apiResults[index];
-      const isApiValid = result && result.rank && result.rank.confidence >= 0.5;
+      const confidence = result?.rank?.confidence || 0;
+      const isApiValid = confidence >= 0.7; // User specified 0.7
       
-    console.log({rank: result.rank, formatted: result.formatted});
-    
       return {
         ...addr,
-        formatted: isApiValid ? result.formatted : null,
+        geoConfidence: confidence,
+        geoFormatted: result?.formatted || null,
+        useGeoAddress: isApiValid,
         status: isApiValid ? 'valid' : 'invalid',
-        error: isApiValid ? null : 'API could not verify'
+        error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
       };
     });
 
