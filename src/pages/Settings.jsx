@@ -11,12 +11,16 @@ const POPULAR_FONTS = [
 ];
 
 export default function Settings() {
-  const [apiKey, setApiKey] = useState('');
+  const [geoApiKey, setGeoApiKey] = useState('');
+  const [googleApiKey, setGoogleApiKey] = useState('');
+  const [defaultAddressApi, setDefaultAddressApi] = useState('geoapify');
   const [isSaved, setIsSaved] = useState(false);
-  const [dailyUsage, setDailyUsage] = useState(0);
-  const maxUsage = 3000;
+  const [geoUsage, setGeoUsage] = useState(0);
+  const [googleUsage, setGoogleUsage] = useState(0);
+  
+  const geoMaxUsage = 3000;
+  const googleMaxUsage = 300;
 
-  const [useGeoApify, setUseGeoApify] = useState(true);
   const [labelWidth, setLabelWidth] = useState(90);
   const [labelHeight, setLabelHeight] = useState(30);
   const [selectedFont, setSelectedFont] = useState('Arial');
@@ -31,15 +35,21 @@ export default function Settings() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const savedKey = await getSetting('geoapify_api_key');
-        if (savedKey) setApiKey(savedKey);
+        const savedGeoKey = await getSetting('geoapify_api_key');
+        if (savedGeoKey) setGeoApiKey(savedGeoKey);
 
-        const savedUseGeo = await getSetting('use_geoapify');
-        if (savedUseGeo !== null) setUseGeoApify(savedUseGeo === 'true');
+        const savedGoogleKey = await getSetting('google_api_key');
+        if (savedGoogleKey) setGoogleApiKey(savedGoogleKey);
+
+        const savedDefaultApi = await getSetting('default_address_api');
+        if (savedDefaultApi) setDefaultAddressApi(savedDefaultApi);
 
         const today = new Date().toISOString().split('T')[0];
-        const usageCount = await getDailyUsage(today);
-        setDailyUsage(usageCount);
+        const geoUsageCount = await getDailyUsage(today, 'geoapify');
+        setGeoUsage(geoUsageCount);
+        
+        const googleUsageCount = await getDailyUsage(today, 'google');
+        setGoogleUsage(googleUsageCount);
 
         const savedWidth = await getSetting('label_width');
         if (savedWidth) setLabelWidth(parseInt(savedWidth, 10));
@@ -86,8 +96,9 @@ export default function Settings() {
 
   const handleSave = async () => {
     try {
-      await saveSetting('geoapify_api_key', apiKey);
-      await saveSetting('use_geoapify', useGeoApify.toString());
+      await saveSetting('geoapify_api_key', geoApiKey);
+      await saveSetting('google_api_key', googleApiKey);
+      await saveSetting('default_address_api', defaultAddressApi);
       await saveSetting('label_width', labelWidth.toString());
       await saveSetting('label_height', labelHeight.toString());
       await saveSetting('label_font', selectedFont);
@@ -129,8 +140,9 @@ export default function Settings() {
   const handleResetApp = async () => {
     try {
       // Save current configuration before resetting
-      await saveSetting('geoapify_api_key', apiKey);
-      await saveSetting('use_geoapify', useGeoApify.toString());
+      await saveSetting('geoapify_api_key', geoApiKey);
+      await saveSetting('google_api_key', googleApiKey);
+      await saveSetting('default_address_api', defaultAddressApi);
       await saveSetting('label_width', labelWidth.toString());
       await saveSetting('label_height', labelHeight.toString());
       await saveSetting('label_font', selectedFont);
@@ -138,13 +150,14 @@ export default function Settings() {
       await saveSetting('theme', currentTheme);
 
       // Clear data tables but keep settings
-      await db.transaction('rw', [db.orders, db.csv_logs, db.daily_usage], async () => {
+      await db.transaction('rw', [db.orders, db.csv_logs, db.api_usage], async () => {
         await db.orders.clear();
         await db.csv_logs.clear();
-        await db.daily_usage.clear();
+        await db.api_usage.clear();
       });
       // Optionally reset daily usage in state
-      setDailyUsage(0);
+      setGeoUsage(0);
+      setGoogleUsage(0);
       setShowResetDialog(false);
       // Hard reload to clear any memory states
       window.location.reload();
@@ -158,10 +171,12 @@ export default function Settings() {
     ? allFonts.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).slice(0, 10)
     : [];
 
-  const usagePercentage = Math.min((dailyUsage / maxUsage) * 100, 100);
-  const getUsageColor = () => {
-    if (usagePercentage < 50) return 'var(--success)';
-    if (usagePercentage < 85) return 'var(--warning)';
+  const geoUsagePercentage = Math.min((geoUsage / geoMaxUsage) * 100, 100);
+  const googleUsagePercentage = Math.min((googleUsage / googleMaxUsage) * 100, 100);
+  
+  const getUsageColor = (percentage) => {
+    if (percentage < 50) return 'var(--success)';
+    if (percentage < 85) return 'var(--warning)';
     return 'var(--danger)';
   };
 
@@ -194,31 +209,49 @@ export default function Settings() {
             API & Quotas
           </h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-            Configure your Geoapify API key and monitor your daily batch processing limits.
+            Configure your API keys and monitor your daily batch processing limits.
           </p>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-              <input 
-                type="checkbox" 
-                id="useGeoApify"
-                checked={useGeoApify}
-                onChange={(e) => setUseGeoApify(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-              />
-              <label htmlFor="useGeoApify" style={{ fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', flex: 1 }}>
-                Enable Geoapify Address Validation
-              </label>
-            </div>
+            {geoApiKey && googleApiKey && (
+              <div style={{ padding: '16px', background: 'var(--accent-soft)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--accent)', marginBottom: '8px' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.95rem', display: 'block', marginBottom: '10px', color: 'var(--accent)' }}>Default API to Use</label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    onClick={() => setDefaultAddressApi('geoapify')}
+                    style={{ 
+                      flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid',
+                      borderColor: defaultAddressApi === 'geoapify' ? 'var(--accent)' : 'var(--border)',
+                      background: defaultAddressApi === 'geoapify' ? 'var(--accent)' : 'var(--bg-primary)',
+                      color: defaultAddressApi === 'geoapify' ? 'white' : 'var(--text-primary)',
+                      fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)'
+                    }}
+                  >
+                    Geoapify
+                  </button>
+                  <button 
+                    onClick={() => setDefaultAddressApi('google')}
+                    style={{ 
+                      flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid',
+                      borderColor: defaultAddressApi === 'google' ? 'var(--accent)' : 'var(--border)',
+                      background: defaultAddressApi === 'google' ? 'var(--accent)' : 'var(--bg-primary)',
+                      color: defaultAddressApi === 'google' ? 'white' : 'var(--text-primary)',
+                      fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)'
+                    }}
+                  >
+                    Google Places
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
               <input 
                 type="password" 
-                placeholder="Enter your API key" 
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                disabled={!useGeoApify}
+                placeholder="Enter Geoapify API key" 
+                value={geoApiKey}
+                onChange={(e) => setGeoApiKey(e.target.value)}
                 style={{ 
                   padding: '12px 14px', 
                   borderRadius: 'var(--radius-sm)', 
@@ -228,38 +261,80 @@ export default function Settings() {
                   width: '100%',
                   fontSize: '1rem',
                   outline: 'none',
-                  transition: 'var(--transition)',
-                  opacity: useGeoApify ? 1 : 0.6
+                  transition: 'var(--transition)'
                 }} 
               />
             </div>
 
-            {/* Daily Usage Section Merged Here */}
-            <div style={{ marginTop: '8px', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
-                <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Activity size={16} color="var(--accent)" />
-                  API Quota Usage
-                </span>
-                <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{usagePercentage.toFixed(0)}%</span>
-              </div>
-              
-              <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ 
-                  width: `${usagePercentage}%`, 
-                  backgroundColor: getUsageColor(), 
-                  height: '100%',
-                  transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' 
-                }} />
-              </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                <span>0</span>
-                <span>{dailyUsage.toLocaleString()} used</span>
-                <span>{maxUsage.toLocaleString()}</span>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Google Places API Key</label>
+              <input 
+                type="password" 
+                placeholder="Enter Google Places API key" 
+                value={googleApiKey}
+                onChange={(e) => setGoogleApiKey(e.target.value)}
+                style={{ 
+                  padding: '12px 14px', 
+                  borderRadius: 'var(--radius-sm)', 
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  width: '100%',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'var(--transition)'
+                }} 
+              />
             </div>
 
+            {/* Quota Usage Bars */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
+              <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
+                  <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Activity size={16} color="var(--accent)" />
+                    Geoapify Quota Usage
+                  </span>
+                  <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{geoUsagePercentage.toFixed(0)}%</span>
+                </div>
+                <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    width: `${geoUsagePercentage}%`, 
+                    backgroundColor: getUsageColor(geoUsagePercentage), 
+                    height: '100%',
+                    transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  <span>0</span>
+                  <span>{geoUsage.toLocaleString()} used</span>
+                  <span>{geoMaxUsage.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
+                  <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Activity size={16} color="var(--accent)" />
+                    Google Quota Usage
+                  </span>
+                  <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{googleUsagePercentage.toFixed(0)}%</span>
+                </div>
+                <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    width: `${googleUsagePercentage}%`, 
+                    backgroundColor: getUsageColor(googleUsagePercentage), 
+                    height: '100%',
+                    transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  <span>0</span>
+                  <span>{googleUsage.toLocaleString()} used</span>
+                  <span>{googleMaxUsage.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
             
             <button 
               onClick={handleSave}

@@ -9,11 +9,12 @@ db.version(1).stores({
   orders: 'orderId, buyerUsername, address, [buyerUsername+address], status'
 });
 
-// v2: Switch orders PK to auto-increment so multiple batches can coexist
-// even when they contain overlapping eBay order IDs.
-db.version(2).stores({
+// v3: Add API-specific daily usage tracking
+// We rename the store to api_usage to avoid "changing primary key" errors in IndexedDB
+db.version(3).stores({
   settings: 'key',
-  daily_usage: 'date',
+  api_usage: '[date+api], date, api',
+  daily_usage: null, 
   csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
   orders: '++id, orderId, buyerUsername, batchTimestamp, status'
 });
@@ -30,16 +31,16 @@ export async function saveSetting(key, value) {
 }
 
 // Helper to get daily usage
-export async function getDailyUsage(dateString) {
-  const usage = await db.daily_usage.get(dateString);
+export async function getDailyUsage(dateString, api = 'geoapify') {
+  const usage = await db.api_usage.get({ date: dateString, api });
   return usage ? usage.count : 0;
 }
 
 // Helper to increment daily usage
-export async function incrementDailyUsage(dateString, amount = 1) {
-  return await db.transaction('rw', db.daily_usage, async () => {
-    const current = await getDailyUsage(dateString);
-    await db.daily_usage.put({ date: dateString, count: current + amount });
+export async function incrementDailyUsage(dateString, amount = 1, api = 'geoapify') {
+  return await db.transaction('rw', db.api_usage, async () => {
+    const current = await getDailyUsage(dateString, api);
+    await db.api_usage.put({ date: dateString, api, count: current + amount });
     return current + amount;
   });
 }

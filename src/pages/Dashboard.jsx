@@ -16,8 +16,10 @@ export default function Dashboard() {
 
   const recentLogs = useLiveQuery(() => db.csv_logs.orderBy('id').reverse().limit(5).toArray());
   const allOrders = useLiveQuery(() => db.orders.toArray());
-  const apiKeySetting = useLiveQuery(() => db.settings.get('geoapify_api_key'));
-  const hasApiKey = !!(apiKeySetting && apiKeySetting.value);
+  const geoApiKeySetting = useLiveQuery(() => db.settings.get('geoapify_api_key'));
+  const googleApiKeySetting = useLiveQuery(() => db.settings.get('google_api_key'));
+  const hasApiKey = !!((geoApiKeySetting && geoApiKeySetting.value) || (googleApiKeySetting && googleApiKeySetting.value));
+  const apiKeyLabel = (geoApiKeySetting?.value && googleApiKeySetting?.value) ? 'API' : (googleApiKeySetting?.value ? 'Google' : 'Geoapify');
 
   // Group orders by batchTimestamp — each CSV upload is its own separate batch
   const batches = React.useMemo(() => {
@@ -175,7 +177,7 @@ export default function Dashboard() {
           }}>
             <Info size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: '1px' }} />
             <div>
-              <strong style={{ color: '#f59e0b' }}>No Geoapify API key configured.</strong>
+              <strong style={{ color: '#f59e0b' }}>No {apiKeyLabel} API key configured.</strong>
               <span style={{ color: 'var(--text-secondary)' }}>
                 {' '}Online address validation is disabled — only offline checks will run.
                 <button
