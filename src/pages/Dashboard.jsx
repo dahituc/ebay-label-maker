@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { parseEbayCsv } from '../services/csvParser.js';
-import { validateAddresses } from '../services/addressValidator.js';
+import { validateAddresses, validatePostcode, startBackgroundValidation } from '../services/addressValidator.js';
 import { db } from '../db/database.js';
-import { UploadCloud, CheckCircle, AlertTriangle, FileText, Clock, Archive, Trash2, Printer, Edit2, Info } from 'lucide-react';
+import { UploadCloud, CheckCircle, AlertTriangle, FileText, Clock, Archive, Trash2, Printer, Edit2, Info, Loader2 } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Dashboard() {
@@ -12,7 +12,18 @@ export default function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState(null);
   const [confirmState, setConfirmState] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  React.useEffect(() => {
+    const handleComplete = (e) => {
+      const { count } = e.detail;
+      setNotification(`Validation complete for ${count} addresses!`);
+      setTimeout(() => setNotification(null), 5000);
+    };
+    window.addEventListener('validation-complete', handleComplete);
+    return () => window.removeEventListener('validation-complete', handleComplete);
+  }, []);
 
   const recentLogs = useLiveQuery(() => db.csv_logs.orderBy('id').reverse().limit(5).toArray());
   const allOrders = useLiveQuery(() => db.orders.toArray());
@@ -50,36 +61,57 @@ export default function Dashboard() {
         throw new Error('No valid orders found in CSV.');
       }
 
-      // 2. Validate Addresses
-      setProgress(`Validating ${parsedOrders.length} addresses...`);
-      const validatedOrders = await validateAddresses(parsedOrders);
+      // 2. Fetch Settings directly (avoiding stale state)
+      const apiKey = await db.settings.get('geoapify_api_key');
+      const useGeo = await db.settings.get('use_geoapify');
+      const apiEnabled = !!(apiKey?.value && useGeo?.value === 'true');
       
-      // 3. Save as a NEW batch (accumulate alongside existing batches)
-      setProgress('Saving batch...');
+      setProgress(`Preparing batch...`);
       
       const currentTimestamp = new Date().toISOString();
-      const ordersToSave = validatedOrders.map(o => ({
-        ...o,
-        orderId: o.orderIds, // Map for schema
-        batchTimestamp: currentTimestamp,
-        batchFilename: file.name
-      }));
-      
-      await db.orders.bulkAdd(ordersToSave);
+      const initialProcessed = parsedOrders.map(o => {
+        const isLocalValid = validatePostcode(o.state, o.postcode);
+        
+        // If API is enabled, we mark it as 'verifying' even if local passes 
+        // to get the extra confidence/formatting from Geoapify.
+        // Otherwise, we fallback to local validation result.
+        let status = 'unverified';
+        if (apiEnabled) {
+          status = 'verifying';
+        } else if (isLocalValid) {
+          status = 'valid';
+        }
 
-      // 4. Summarize and Log
-      const validCount = validatedOrders.filter(o => o.status === 'valid').length;
-      const manualCount = validatedOrders.filter(o => o.status === 'manual').length;
-      const invalidCount = validatedOrders.length - validCount - manualCount;
+        return {
+          ...o,
+          orderId: o.orderIds,
+          batchTimestamp: currentTimestamp,
+          batchFilename: file.name,
+          status
+        };
+      });
+
+      // 3. Save immediately
+      setProgress('Saving batch...');
+      await db.orders.bulkAdd(initialProcessed);
+
+      // 4. Trigger Background API Validation if needed
+      if (apiEnabled) {
+        startBackgroundValidation(currentTimestamp);
+      }
+
+      // 5. Summarize and Log (Initial state)
+      const validCount = initialProcessed.filter(o => o.status === 'valid').length;
+      const manualCount = initialProcessed.filter(o => o.status === 'manual').length;
+      const invalidCount = initialProcessed.length - validCount - manualCount;
 
       await db.csv_logs.add({
         filename: file.name,
-        processedAt: new Date().toISOString(),
-        totalRows: validatedOrders.length,
+        processedAt: currentTimestamp,
+        totalRows: initialProcessed.length,
         validCount,
         invalidCount,
-        manualCount,
-        ordersData: ordersToSave
+        manualCount
       });
       
       // Keep only last 5 logs
@@ -152,6 +184,27 @@ export default function Dashboard() {
   return (
     <div className="animate-fade-in">
       <h1 style={{ marginBottom: '24px' }}>Dashboard</h1>
+
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          zIndex: 1000,
+          background: 'var(--accent)',
+          color: 'white',
+          padding: '16px 24px',
+          borderRadius: 'var(--radius)',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          animation: 'slide-in 0.3s ease-out'
+        }}>
+          <CheckCircle size={20} />
+          <span style={{ fontWeight: 600 }}>{notification}</span>
+        </div>
+      )}
 
       {/* SECTION 1: Process New CSV */}
       <div className="card" style={{ marginBottom: '32px' }}>
@@ -255,7 +308,9 @@ export default function Dashboard() {
             {batches.map((batch, idx) => {
               const validCount = batch.orders.filter(o => o.status === 'valid').length;
               const manualCount = batch.orders.filter(o => o.status === 'manual').length;
-              const invalidCount = batch.orders.length - validCount - manualCount;
+              const verifyingCount = batch.orders.filter(o => o.status === 'verifying').length;
+              const invalidCount = batch.orders.length - validCount - manualCount - verifyingCount;
+              const isVerifying = verifyingCount > 0;
 
               return (
                 <div key={batch.timestamp} className="card">
@@ -297,13 +352,24 @@ export default function Dashboard() {
                     <div style={{ 
                       padding: '20px', 
                       borderRadius: 'var(--radius-sm)', 
-                      background: invalidCount > 0 ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg-primary)', 
-                      border: `1px solid ${invalidCount > 0 ? 'rgba(245, 158, 11, 0.15)' : 'var(--border)'}`,
-                      textAlign: 'center'
+                      background: isVerifying ? 'rgba(59, 130, 246, 0.05)' : (invalidCount > 0 ? 'rgba(245, 158, 11, 0.08)' : 'var(--bg-primary)'), 
+                      border: `1px solid ${isVerifying ? 'var(--accent)' : (invalidCount > 0 ? 'rgba(245, 158, 11, 0.15)' : 'var(--border)')}`,
+                      textAlign: 'center',
+                      position: 'relative'
                     }}>
-                      <AlertTriangle size={28} color={invalidCount > 0 ? '#f59e0b' : 'var(--text-secondary)'} style={{ margin: '0 auto 8px' }} />
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: invalidCount > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>{invalidCount}</div>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>Invalid</div>
+                      {isVerifying ? (
+                        <>
+                          <Loader2 size={28} color="var(--accent)" className="spin" style={{ margin: '0 auto 8px' }} />
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)' }}>{verifyingCount}</div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>Verifying...</div>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle size={28} color={invalidCount > 0 ? '#f59e0b' : 'var(--text-secondary)'} style={{ margin: '0 auto 8px' }} />
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: invalidCount > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>{invalidCount}</div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>Invalid</div>
+                        </>
+                      )}
                     </div>
 
                     <div style={{ 
@@ -355,6 +421,7 @@ export default function Dashboard() {
                               <th style={{ padding: '10px 12px' }}>Order ID</th>
                               <th style={{ padding: '10px 12px' }}>Buyer</th>
                               <th style={{ padding: '10px 12px' }}>Postage Service</th>
+                              <th style={{ padding: '10px 12px' }}>Conf</th>
                               <th style={{ padding: '10px 12px' }}>Status</th>
                             </tr>
                           </thead>
@@ -367,6 +434,13 @@ export default function Dashboard() {
                                   <span style={{ background: 'var(--bg-secondary)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
                                     {order.postageService || 'Unknown'}
                                   </span>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  {order.geoConfidence > 0 ? (
+                                    <span style={{ fontWeight: 600, color: order.geoConfidence >= 0.7 ? 'var(--success)' : 'var(--warning)' }}>
+                                      {(order.geoConfidence * 100).toFixed(0)}%
+                                    </span>
+                                  ) : '--'}
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
                                   {order.error ? (

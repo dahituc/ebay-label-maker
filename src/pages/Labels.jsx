@@ -136,7 +136,7 @@ export default function Labels() {
                     <div className="label-actions print-hide">
                       {order.geoConfidence >= 0.7 && (
                         <div className="verified-badge">
-                          <CheckCircle size={10} /> Verified
+                          <CheckCircle size={10} /> Verified ({(order.geoConfidence * 100).toFixed(0)}%)
                         </div>
                       )}
                       {order.geoFormatted && order.geoConfidence >= 0.7 && (
@@ -203,7 +203,16 @@ export default function Labels() {
                       )}
                       <div style={{ flex: 1 }}></div>
                       <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
-                      {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2px' }}>
+                        <div style={{ flex: 1 }}>
+                          {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
+                        </div>
+                        {order.geoConfidence > 0 && (
+                          <span style={{ fontSize: '7px', opacity: 0.5, color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                            Conf: {(order.geoConfidence * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
@@ -262,9 +271,10 @@ export default function Labels() {
                               </>
                             )}
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              {order.geoConfidence >= 0.7 && (
-                                <span style={{ fontSize: '0.65rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
-                                  <CheckCircle size={10} /> API Verified
+                              {order.geoConfidence > 0 && (
+                                <span style={{ fontSize: '0.65rem', color: order.geoConfidence >= 0.7 ? 'var(--success)' : 'var(--warning)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
+                                  {order.geoConfidence >= 0.7 ? <CheckCircle size={10} /> : <AlertCircle size={10} />}
+                                  Conf: {(order.geoConfidence * 100).toFixed(0)}%
                                 </span>
                               )}
                               {order.geoFormatted && order.geoConfidence >= 0.7 && (

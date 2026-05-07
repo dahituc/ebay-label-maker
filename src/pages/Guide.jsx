@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { BookOpen, Upload, Edit, Printer, Settings as SettingsIcon, CheckCircle, Info, AlertCircle } from 'lucide-react';
 
 export default function Guide() {
@@ -132,21 +133,23 @@ export default function Guide() {
         </div>
       </section>
 
-      <section style={{ marginBottom: '60px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-          <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px' }}>
-            <AlertCircle size={24} color="var(--danger)" />
+      {new URLSearchParams(useLocation().search).get('admin') === '1' && (
+        <section style={{ marginBottom: '60px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px' }}>
+              <AlertCircle size={24} color="var(--danger)" />
+            </div>
+            <h2 style={{ margin: 0 }}>Troubleshooting</h2>
           </div>
-          <h2 style={{ margin: 0 }}>Troubleshooting</h2>
-        </div>
-        <div className="card" style={{ padding: '24px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-          <h4 style={{ color: 'var(--danger)', marginBottom: '12px' }}>Database Errors</h4>
-          <p style={{ lineHeight: 1.6, marginBottom: '0' }}>
-            If the application fails to load or you encounter "Database Upgrade Errors," head to <strong>Settings</strong> and look for the <strong>Danger Zone</strong> at the bottom. 
-            The <strong>"Reset Application Data"</strong> button will wipe all order history and logs while safely keeping your API keys and label preferences.
-          </p>
-        </div>
-      </section>
+          <div className="card" style={{ padding: '24px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <h4 style={{ color: 'var(--danger)', marginBottom: '12px' }}>Database Errors</h4>
+            <p style={{ lineHeight: 1.6, marginBottom: '0' }}>
+              If the application fails to load or you encounter "Database Upgrade Errors," head to <strong>Settings</strong> and look for the <strong>Danger Zone</strong> at the bottom. 
+              The <strong>"Reset Application Data"</strong> button will wipe all order history and logs while safely keeping your API keys and label preferences.
+            </p>
+          </div>
+        </section>
+      )}
 
       <div style={{ 
         padding: '32px', 

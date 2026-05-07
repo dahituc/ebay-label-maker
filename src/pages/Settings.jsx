@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getSetting, saveSetting, getDailyUsage, db } from '../db/database';
 import { applyLabelFont } from '../services/fontLoader';
-import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search, Trash2, Sun, Moon, Box, Settings as SettingsIcon, Eye, RotateCcw } from 'lucide-react';
+import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search, Trash2, Sun, Moon, Box, Settings as SettingsIcon, Eye, RotateCcw, CloudCog } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PreviewDialog from '../components/PreviewDialog';
 
@@ -27,6 +28,16 @@ export default function Settings() {
   const [isSearching, setIsSearching] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('admin') === '1') {
+      setIsAdmin(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -612,44 +623,46 @@ export default function Settings() {
 
 
 
-        <div className="card" style={{ borderTop: '4px solid var(--danger)', height: '100%' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--danger)' }}>
-            <Trash2 size={20} />
-            Danger Zone
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-            Wipe all transaction data, including uploaded batches, orders, and processing history. 
-            Your <strong>API configuration</strong> and <strong>visual preferences</strong> will be automatically saved and preserved.
-          </p>
+        {isAdmin && (
+          <div className="card" style={{ borderTop: '4px solid var(--danger)', height: '100%' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--danger)' }}>
+              <Trash2 size={20} />
+              Danger Zone
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              Wipe all transaction data, including uploaded batches, orders, and processing history. 
+              Your <strong>API configuration</strong> and <strong>visual preferences</strong> will be automatically saved and preserved.
+            </p>
 
-          <button 
-            onClick={() => setShowResetDialog(true)}
-            style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              color: 'var(--danger)',
-              border: '1px solid var(--danger)',
-              padding: '12px 20px',
-              borderRadius: 'var(--radius-sm)',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'var(--transition)'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'var(--danger)';
-              e.currentTarget.style.color = 'white';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
-              e.currentTarget.style.color = 'var(--danger)';
-            }}
-          >
-            <Trash2 size={18} />
-            Reset Application Data
-          </button>
-        </div>
+            <button 
+              onClick={() => setShowResetDialog(true)}
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: 'var(--danger)',
+                border: '1px solid var(--danger)',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'var(--transition)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'var(--danger)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.color = 'var(--danger)';
+              }}
+            >
+              <Trash2 size={18} />
+              Reset Application Data
+            </button>
+          </div>
+        )}
       </div>
 
       <ConfirmDialog 

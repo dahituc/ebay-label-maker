@@ -137,16 +137,18 @@ export default function Review() {
                   </div>
 
                   {order.error && !isEditing && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 12px', borderRadius: '4px', marginBottom: '16px', fontSize: '0.9rem' }}>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <AlertCircle size={16} />
-                        {order.error}
-                      </div>
-                      {order.geoConfidence !== undefined && order.geoConfidence > 0 && (
-                        <div style={{ fontSize: '0.75rem', marginLeft: '24px', opacity: 0.8 }}>
-                          API Confidence: {(order.geoConfidence * 100).toFixed(1)}% (Threshold: 70%)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                          <div style={{ fontWeight: 700, marginBottom: '2px' }}>{order.error}</div>
+                          {order.geoConfidence !== undefined && order.geoConfidence > 0 && (
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: order.geoConfidence >= 0.7 ? 'var(--success)' : '#ef4444' }}>
+                              API Confidence: {(order.geoConfidence * 100).toFixed(1)}% (Threshold: 70%)
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
 

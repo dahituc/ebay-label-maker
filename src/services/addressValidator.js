@@ -1,4 +1,4 @@
-import { getSetting, getDailyUsage, incrementDailyUsage } from '../db/database.js';
+import { db, getSetting, getDailyUsage, incrementDailyUsage } from '../db/database.js';
 
 const DAILY_LIMIT = 3000;
 
@@ -144,7 +144,7 @@ export async function validateAddresses(addresses, deps = {}) {
           geoFormatted: result?.formatted || null,
           useGeoAddress: false, // Default to CSV address as requested
           status: isApiValid ? 'valid' : 'invalid',
-          error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
+          error: isApiValid ? null : (confidence < 0.7 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
       };
     });
 
@@ -152,6 +152,73 @@ export async function validateAddresses(addresses, deps = {}) {
   } catch (err) {
     console.error("Geoapify Batch API Error", err);
     return [...valid, ...unverified.map(a => ({ ...a, error: 'API Error' }))];
+  }
+}
+
+/**
+ * Background Validation Runner
+ * Kicks off validation and updates the DB asynchronously.
+ */
+export async function startBackgroundValidation(batchTimestamp, deps = {}) {
+  const _getSetting = deps.getSetting || getSetting;
+  const _getDailyUsage = deps.getDailyUsage || getDailyUsage;
+  const _incrementDailyUsage = deps.incrementDailyUsage || incrementDailyUsage;
+  const _fetch = deps.fetch || globalThis.fetch;
+
+  try {
+    // 1. Get orders for this batch
+    const allBatchOrders = await db.orders.where('batchTimestamp').equals(batchTimestamp).toArray();
+    const unverified = allBatchOrders.filter(o => o.status === 'verifying');
+    
+    if (unverified.length === 0) return;
+
+    // 2. Check API Key and Usage
+    const today = new Date().toISOString().split('T')[0];
+    const apiKey = await _getSetting('geoapify_api_key');
+    const currentUsage = await _getDailyUsage(today);
+    
+    if (!apiKey || (currentUsage + unverified.length > DAILY_LIMIT)) {
+      await db.orders.bulkPut(unverified.map(o => ({ 
+        ...o, 
+        status: 'unverified', 
+        error: !apiKey ? 'No API Key' : 'Daily Limit Exceeded' 
+      })));
+      return;
+    }
+
+    // 3. Run Batch
+    const apiResults = await runGeoapifyBatch(unverified, apiKey, _fetch);
+    await _incrementDailyUsage(today, unverified.length);
+
+    // 4. Update Orders
+    const updates = unverified.map((addr, index) => {
+      const result = apiResults[index];
+      const confidence = result?.rank?.confidence || 0;
+      const isApiValid = confidence >= 0.7;
+      
+      return {
+        ...addr,
+        geoConfidence: confidence,
+        geoFormatted: result?.formatted || null,
+        useGeoAddress: false,
+        status: isApiValid ? 'valid' : 'invalid',
+        error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
+      };
+    });
+
+    await db.orders.bulkPut(updates);
+
+    // 5. Notify UI
+    window.dispatchEvent(new CustomEvent('validation-complete', { 
+      detail: { batchTimestamp, count: updates.length } 
+    }));
+
+  } catch (err) {
+    console.error("Background Validation Error:", err);
+    // Reset status so user can retry or see error
+    const orders = await db.orders.where('batchTimestamp').equals(batchTimestamp).toArray();
+    const toReset = orders.filter(o => o.status === 'verifying');
+    await db.orders.bulkPut(toReset.map(o => ({ ...o, status: 'unverified', error: 'API Error: ' + err.message })));
   }
 }
 
@@ -169,33 +236,38 @@ async function runGeoapifyBatch(unverified, apiKey, fetchFn) {
   });
 
   if (response.status !== 202) {
-    throw new Error('Failed to create batch job');
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to create batch job');
   }
 
   const { id: jobId } = await response.json();
-
   const pollUrl = `${baseUrl}?apiKey=${apiKey}&id=${jobId}`;
   
   let results = null;
-  let tries = 0;
-  
-  // Wait loop
-  while (!results && tries < 10) {
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    tries++;
+  let delay = 3000;
+  const maxDelay = 60000; 
+  const startTime = Date.now();
+  const maxWaitTime = 15 * 60 * 1000; // 15 minutes max for very large batches
+
+  while (!results && (Date.now() - startTime) < maxWaitTime) {
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     const pollResponse = await fetchFn(pollUrl);
     
     if (pollResponse.status === 200) {
-      results = await pollResponse.json(); // Usually returns an array of result objects corresponding to the queries
-    } else if (pollResponse.status !== 202) {
-      throw new Error(`Error while polling for results: HTTP ${pollResponse.status}`);
+      results = await pollResponse.json();
+    } else if (pollResponse.status === 202) {
+      // Exponential backoff
+      delay = Math.min(delay * 1.5, maxDelay);
+    } else {
+      throw new Error(`Polling failed: HTTP ${pollResponse.status}`);
     }
   }
 
   if (!results) {
-     throw new Error('Timeout while polling for results');
+     throw new Error('Batch processing timed out');
   }
 
   return results;
 }
+
