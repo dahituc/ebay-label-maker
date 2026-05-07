@@ -100,10 +100,34 @@ export const parseEbayCsv = (fileOrString) => {
           for (const order of parsedOrders) {
              const orderItems = order.items.map(i => `${i.customLabel} X <b>${i.quantity}</b>`);
 
+             // --- START OF DYNAMIC BUDGET CALCULATION ---
+             let budget = 7; // Adjusted to 7 for a safer margin on 30mm labels
+             budget -= 1; // Header/Name line
+             budget -= 1; // Address 1 line
+             if (order.address2) budget -= 1;
+             budget -= 1; // City/State line
+             if (order.country && order.country.toLowerCase() !== 'australia') budget -= 1;
+             if (order.buyerNote) budget -= 1;
+
+             const totalCount = orderItems.length;
+
              if (order.postageService !== "Australia Post Domestic Regular Letter Untracked") {
-                // For manual orders, we still want to split if items > 2
-                for (let i = 0; i < orderItems.length; i += 2) {
-                    const chunk = orderItems.slice(i, i + 2);
+                // Manual processing orders (non-letter)
+                let currentIdx = 0;
+                let isFirstLabel = true;
+
+                while (currentIdx < totalCount) {
+                    let currentBudget = Math.max(1, budget);
+                    let header = "";
+                    
+                    if (isFirstLabel && totalCount > 1) {
+                        header = `Total Items: <b>${totalCount}</b><br/>`;
+                        currentBudget -= 1;
+                    }
+
+                    const chunkSize = Math.max(1, currentBudget);
+                    const chunk = orderItems.slice(currentIdx, currentIdx + chunkSize);
+                    
                     resultsArray.push({
                        orderIds: order.orderNumber,
                        buyerUsername: order.buyerUsername,
@@ -114,12 +138,15 @@ export const parseEbayCsv = (fileOrString) => {
                        state: order.state,
                        postcode: order.postcode,
                        country: order.country,
-                       itemsSummary: chunk.join('<br/>'),
+                       itemsSummary: header + chunk.join('<br/>'),
                        manualFlag: true,
                        postageService: order.postageService,
                        buyerNote: order.buyerNote,
-                       isExtra: i > 0
+                       isExtra: !isFirstLabel
                     });
+
+                    currentIdx += chunkSize;
+                    isFirstLabel = false;
                 }
                 continue;
              }
@@ -148,13 +175,37 @@ export const parseEbayCsv = (fileOrString) => {
              }
           }
 
-          // Final output formatting for consolidated
+          // Final output formatting for consolidated (Untracked Letters)
           for (const [key, merged] of consolidatedMap.entries()) {
              const items = merged.combinedItems;
-             for (let i = 0; i < items.length; i += 2) {
-                const chunk = items.slice(i, i + 2);
+             const totalCount = items.length;
+             
+             // Recalculate budget for this merged order
+             let budget = 7; // Safer margin
+             budget -= 1; // Name
+             budget -= 1; // Address 1
+             if (merged.address2) budget -= 1;
+             budget -= 1; // City/State
+             if (merged.country && merged.country.toLowerCase() !== 'australia') budget -= 1;
+             if (merged.buyerNote) budget -= 1;
+
+             let currentIdx = 0;
+             let isFirstLabel = true;
+
+             while (currentIdx < totalCount) {
+                let currentBudget = Math.max(1, budget);
+                let header = "";
+                
+                if (isFirstLabel && totalCount > 1) {
+                    header = `Total Items: <b>${totalCount}</b><br/>`;
+                    currentBudget -= 1;
+                }
+
+                const chunkSize = Math.max(1, currentBudget);
+                const chunk = items.slice(currentIdx, currentIdx + chunkSize);
+
                 resultsArray.push({
-                   orderIds: merged.orderNumbers.join(', '), // Could be multiple
+                   orderIds: merged.orderNumbers.join(', '),
                    buyerUsername: merged.buyerUsername,
                    name: merged.postToName,
                    address1: merged.address1,
@@ -163,10 +214,13 @@ export const parseEbayCsv = (fileOrString) => {
                    state: merged.state,
                    postcode: merged.postcode,
                    country: merged.country,
-                   itemsSummary: chunk.join('<br/>'),
+                   itemsSummary: header + chunk.join('<br/>'),
                    buyerNote: merged.buyerNote,
-                   isExtra: i > 0
+                   isExtra: !isFirstLabel
                 });
+
+                currentIdx += chunkSize;
+                isFirstLabel = false;
              }
           }
 

@@ -332,9 +332,8 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   color: var(--text-secondary);
   text-align: right;
   line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .label-sku > b {
