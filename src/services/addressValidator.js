@@ -68,6 +68,17 @@ export async function validateAddresses(addresses, deps = {}) {
     });
   }
 
+  // Phase 5d: Check if offline
+  if (!navigator.onLine) {
+    console.log("App is offline, skipping API address validation.");
+    return addresses.map(addr => {
+      if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
+      const isLocalValid = validatePostcode(addr.state, addr.postcode);
+      return { ...addr, status: isLocalValid ? 'valid' : 'unverified', error: 'Skipped: Offline' };
+    });
+  }
+
+
   if (!useGeoApify) {
     return addresses.map(addr => {
         if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
@@ -177,7 +188,18 @@ export async function startBackgroundValidation(batchTimestamp, deps = {}) {
     const apiKey = await _getSetting('geoapify_api_key');
     const currentUsage = await _getDailyUsage(today);
     
+    // Phase 5d: Check if offline
+    if (!navigator.onLine) {
+      await db.orders.bulkPut(unverified.map(o => ({ 
+        ...o, 
+        status: 'unverified', 
+        error: 'Skipped: Offline' 
+      })));
+      return;
+    }
+
     if (!apiKey || (currentUsage + unverified.length > DAILY_LIMIT)) {
+
       await db.orders.bulkPut(unverified.map(o => ({ 
         ...o, 
         status: 'unverified', 
