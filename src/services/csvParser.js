@@ -98,56 +98,27 @@ export const parseEbayCsv = (fileOrString) => {
           const resultsArray = [];
 
           for (const order of parsedOrders) {
-             const orderItems = order.items.map(i => `${i.customLabel} X <b>${i.quantity}</b>`);
-
-             // --- START OF DYNAMIC BUDGET CALCULATION ---
-             let budget = 7; // Adjusted to 7 for a safer margin on 30mm labels
-             budget -= 1; // Header/Name line
-             budget -= 1; // Address 1 line
-             if (order.address2) budget -= 1;
-             budget -= 1; // City/State line
-             if (order.country && order.country.toLowerCase() !== 'australia') budget -= 1;
-             if (order.buyerNote) budget -= 1;
-
-             const totalCount = orderItems.length;
+             const orderItems = order.items.map(i => ({ sku: i.customLabel, quantity: i.quantity }));
 
              if (order.postageService !== "Australia Post Domestic Regular Letter Untracked") {
                 // Manual processing orders (non-letter)
-                let currentIdx = 0;
-                let isFirstLabel = true;
-
-                while (currentIdx < totalCount) {
-                    let currentBudget = Math.max(1, budget);
-                    let header = "";
-                    
-                    if (isFirstLabel && totalCount > 1) {
-                        header = `Total Items: <b>${totalCount}</b><br/>`;
-                        currentBudget -= 1;
-                    }
-
-                    const chunkSize = Math.max(1, currentBudget);
-                    const chunk = orderItems.slice(currentIdx, currentIdx + chunkSize);
-                    
-                    resultsArray.push({
-                       orderIds: order.orderNumber,
-                       buyerUsername: order.buyerUsername,
-                       name: order.postToName,
-                       address1: order.address1,
-                       address2: order.address2,
-                       city: order.city,
-                       state: order.state,
-                       postcode: order.postcode,
-                       country: order.country,
-                       itemsSummary: header + chunk.join('<br/>'),
-                       manualFlag: true,
-                       postageService: order.postageService,
-                       buyerNote: order.buyerNote,
-                       isExtra: !isFirstLabel
-                    });
-
-                    currentIdx += chunkSize;
-                    isFirstLabel = false;
-                }
+                resultsArray.push({
+                   orderIds: order.orderNumber,
+                   buyerUsername: order.buyerUsername,
+                   name: order.postToName,
+                   address1: order.address1,
+                   address2: order.address2,
+                   city: order.city,
+                   state: order.state,
+                   postcode: order.postcode,
+                   country: order.country,
+                   items: orderItems,
+                   itemsSummary: orderItems.map(i => `${i.sku} X <b>${i.quantity}</b>`).join('<br/>'),
+                   manualFlag: true,
+                   postageService: order.postageService,
+                   buyerNote: order.buyerNote,
+                   isExtra: false
+                });
                 continue;
              }
 
@@ -158,6 +129,10 @@ export const parseEbayCsv = (fileOrString) => {
                 const existing = consolidatedMap.get(mergeKey);
                 existing.orderNumbers.push(order.orderNumber);
                 existing.combinedItems.push(...orderItems);
+                // Also merge buyer notes if they differ
+                if (order.buyerNote && !existing.buyerNote.includes(order.buyerNote)) {
+                  existing.buyerNote = existing.buyerNote ? `${existing.buyerNote} | ${order.buyerNote}` : order.buyerNote;
+                }
              } else {
                 consolidatedMap.set(mergeKey, {
                    orderNumbers: [order.orderNumber],
@@ -170,59 +145,30 @@ export const parseEbayCsv = (fileOrString) => {
                    postcode: order.postcode,
                    country: order.country,
                    combinedItems: [...orderItems],
-                   buyerNote: order.buyerNote
+                   buyerNote: order.buyerNote || ''
                 });
              }
           }
 
           // Final output formatting for consolidated (Untracked Letters)
           for (const [key, merged] of consolidatedMap.entries()) {
-             const items = merged.combinedItems;
-             const totalCount = items.length;
-             
-             // Recalculate budget for this merged order
-             let budget = 7; // Safer margin
-             budget -= 1; // Name
-             budget -= 1; // Address 1
-             if (merged.address2) budget -= 1;
-             budget -= 1; // City/State
-             if (merged.country && merged.country.toLowerCase() !== 'australia') budget -= 1;
-             if (merged.buyerNote) budget -= 1;
-
-             let currentIdx = 0;
-             let isFirstLabel = true;
-
-             while (currentIdx < totalCount) {
-                let currentBudget = Math.max(1, budget);
-                let header = "";
-                
-                if (isFirstLabel && totalCount > 1) {
-                    header = `Total Items: <b>${totalCount}</b><br/>`;
-                    currentBudget -= 1;
-                }
-
-                const chunkSize = Math.max(1, currentBudget);
-                const chunk = items.slice(currentIdx, currentIdx + chunkSize);
-
-                resultsArray.push({
-                   orderIds: merged.orderNumbers.join(', '),
-                   buyerUsername: merged.buyerUsername,
-                   name: merged.postToName,
-                   address1: merged.address1,
-                   address2: merged.address2,
-                   city: merged.city,
-                   state: merged.state,
-                   postcode: merged.postcode,
-                   country: merged.country,
-                   itemsSummary: header + chunk.join('<br/>'),
-                   buyerNote: merged.buyerNote,
-                   isExtra: !isFirstLabel
-                });
-
-                currentIdx += chunkSize;
-                isFirstLabel = false;
-             }
+             resultsArray.push({
+                orderIds: merged.orderNumbers.join(', '),
+                buyerUsername: merged.buyerUsername,
+                name: merged.postToName,
+                address1: merged.address1,
+                address2: merged.address2,
+                city: merged.city,
+                state: merged.state,
+                postcode: merged.postcode,
+                country: merged.country,
+                items: merged.combinedItems,
+                itemsSummary: merged.combinedItems.map(i => `${i.sku} X <b>${i.quantity}</b>`).join('<br/>'),
+                buyerNote: merged.buyerNote,
+                isExtra: false
+             });
           }
+
 
           resolve(resultsArray);
         } catch (error) {

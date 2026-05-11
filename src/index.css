@@ -336,6 +336,12 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   word-break: break-word;
 }
 
+.item-line {
+  display: block;
+  text-align: right;
+  margin-bottom: 1px;
+}
+
 .label-sku > b {
   font-size: 12px;
   font-weight: 900;

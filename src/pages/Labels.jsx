@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../db/database.js';
@@ -22,6 +22,107 @@ export default function Labels() {
   const [viewMode, setViewMode] = useState('labels'); // 'labels' | 'table'
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  
+  const [printableLabels, setPrintableLabels] = useState([]);
+  const [measuringIndex, setMeasuringIndex] = useState(-1); // -1 means not measuring, >=0 is current index
+  const hiddenContainerRef = useRef(null);
+
+  const settings = useLiveQuery(() => db.settings.toArray());
+
+  useEffect(() => {
+    if (validOrders && validOrders.length > 0) {
+      setPrintableLabels([]);
+      setMeasuringIndex(0);
+    } else if (validOrders && validOrders.length === 0) {
+      setPrintableLabels([]);
+      setMeasuringIndex(-1);
+    }
+  }, [validOrders, settings]);
+
+  useLayoutEffect(() => {
+    if (measuringIndex === -1 || !validOrders || measuringIndex >= validOrders.length || !hiddenContainerRef.current) return;
+
+    // Small delay to ensure DOM is ready and browser can breathe
+    const timer = setTimeout(() => {
+      const node = hiddenContainerRef.current.querySelector('.label-item');
+      if (!node) return;
+
+      const originalOrder = validOrders[measuringIndex];
+      const isOverflowing = node.scrollHeight > node.clientHeight;
+      const orderParts = [];
+
+      if (isOverflowing) {
+        // --- START RECURSIVE SPLITTING ---
+        let remainingItems = [...(originalOrder.items || [])];
+        let partNumber = 1;
+        const totalSKUs = remainingItems.length;
+        const totalQuantity = remainingItems.reduce((acc, i) => acc + i.quantity, 0);
+
+        const itemsNode = node.querySelector('.label-sku');
+        const itemLineNodes = itemsNode.querySelectorAll('.item-line');
+        const availableHeight = node.clientHeight - (node.scrollHeight - itemsNode.offsetHeight);
+        
+        let firstBatchSize = 0;
+        let cumulativeHeight = 0;
+        itemLineNodes.forEach((itemNode, idx) => {
+          cumulativeHeight += itemNode.offsetHeight;
+          if (cumulativeHeight <= availableHeight) {
+            firstBatchSize = idx + 1;
+          }
+        });
+
+        if (firstBatchSize === 0 && remainingItems.length > 0) firstBatchSize = 1;
+
+        const firstBatch = remainingItems.slice(0, firstBatchSize);
+        remainingItems = remainingItems.slice(firstBatchSize);
+
+        orderParts.push({
+          ...originalOrder,
+          items: firstBatch,
+          labelKey: `${originalOrder.id}-part1`,
+          partIndex: 1,
+          isExtra: false,
+          totalSKUs,
+          totalQuantity
+        });
+
+        const ITEMS_PER_EXTRA_LABEL = 14; 
+        while (remainingItems.length > 0) {
+          partNumber++;
+          const nextBatch = remainingItems.slice(0, ITEMS_PER_EXTRA_LABEL);
+          remainingItems = remainingItems.slice(ITEMS_PER_EXTRA_LABEL);
+
+          orderParts.push({
+            ...originalOrder,
+            items: nextBatch,
+            labelKey: `${originalOrder.id}-part${partNumber}`,
+            partIndex: partNumber,
+            isExtra: true,
+            totalSKUs,
+            totalQuantity
+          });
+        }
+
+        orderParts.forEach(p => p.totalParts = partNumber);
+      } else {
+        orderParts.push({
+          ...originalOrder,
+          labelKey: originalOrder.id.toString(),
+          partIndex: 1,
+          totalParts: 1
+        });
+      }
+
+      setPrintableLabels(prev => [...prev, ...orderParts]);
+      setMeasuringIndex(prev => prev + 1);
+    }, 10); // Yield to browser
+
+    return () => clearTimeout(timer);
+  }, [measuringIndex, validOrders]);
+
+  const isMeasuring = measuringIndex >= 0 && measuringIndex < (validOrders?.length || 0);
+
+
 
   const handleEditClick = (order) => {
     setEditingId(order.id);
@@ -111,27 +212,107 @@ export default function Labels() {
 
           <button 
             className="btn btn-primary" 
-            style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 24px', fontSize: '1.1rem' }} 
+            style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 24px', fontSize: '1.1rem', position: 'relative' }} 
             onClick={() => window.print()}
-            disabled={validOrders.length === 0 || viewMode === 'table'}
+            disabled={printableLabels.length === 0 || viewMode === 'table' || isMeasuring}
           >
-            <Printer size={20} /> Print {validOrders.length} Labels
+            <Printer size={20} /> 
+            {isMeasuring ? (
+              <>Processing ({printableLabels.length})...</>
+            ) : (
+              <>Print {printableLabels.length} Labels</>
+            )}
           </button>
         </div>
       </div>
+
+      {isMeasuring && (
+        <div className="print-hide" style={{ marginBottom: '24px', padding: '16px', background: 'var(--accent-soft)', borderRadius: 'var(--radius)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="spinner spin" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
+          <div style={{ flex: 1 }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
+               <span>Optimizing label layouts...</span>
+               <span>{measuringIndex} / {validOrders.length}</span>
+             </div>
+             <div style={{ width: '100%', height: '6px', background: 'var(--bg-primary)', borderRadius: '3px', overflow: 'hidden' }}>
+               <div style={{ width: `${(measuringIndex / validOrders.length) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s ease' }}></div>
+             </div>
+          </div>
+        </div>
+      )}
       
+      {/* Invisible container for measuring overflow - Render only CURRENT order */}
+      {isMeasuring && validOrders[measuringIndex] && (
+        <div 
+          ref={hiddenContainerRef}
+          style={{ position: 'absolute', top: '-9999px', left: '-9999px', visibility: 'hidden' }}
+          className="print-hide"
+        >
+          <div className="labels-grid">
+            {(() => {
+              const order = validOrders[measuringIndex];
+              return (
+                <div key={`measure-${order.id}`} data-order-id={order.id} className="label-item">
+                  {!order.isExtra && <span className="label-to">To</span>}
+                  <strong className="label-name">
+                    {order.name} <span className="label-orderID">({order.orderId})</span>
+                    {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
+                  </strong>
+                  {!order.isExtra && (
+                    <div className="label-address-container">
+                      {order.useGeoAddress && order.geoFormatted ? (
+                        <>
+                          <span className="label-address">{order.address1}</span>
+                          <span className="label-address is-api">{order.geoFormatted}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="label-address">{order.address1},</span>
+                          <span className="label-address">{order.address2 ? `${order.address2}` : ''}, {order.city} {order.state} {order.postcode}</span>
+                        </>
+                      )}
+                      {order.country && order.country.toLowerCase() !== 'australia' && (
+                        <span className="label-address">{order.country}</span>
+                      )}
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}></div>
+                  <div className="label-sku">
+                     {order.items && order.items.length > 3 && (
+                        <div className="item-line" style={{ fontWeight: 700, borderBottom: '1.5px solid var(--text-primary)', marginBottom: '3px', textAlign: 'right', fontSize: '10px', color: 'var(--text-primary)', paddingBottom: '1px' }}>
+                          TOTAL ITEMS: {order.items.reduce((acc, i) => acc + i.quantity, 0)}
+                        </div>
+                     )}
+                     {order.items && order.items.map((item, idx) => (
+                        <div key={idx} className="item-line">
+                          {item.sku} X <b>{item.quantity}</b>
+                        </div>
+                     ))}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2px' }}>
+                    <div style={{ flex: 1 }}>
+                      {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {viewMode === 'labels' ? (
         <div className="labels-grid">
           {validOrders.length === 0 ? (
             <div className="print-hide card" style={{ textAlign: 'center', padding: '48px', color: 'var(--text-secondary)' }}>
               No valid orders found. Go to the Dashboard to upload and process a CSV.
             </div>
-          ) : (
-            validOrders.map(order => {
+            ) : (
+            printableLabels.map(order => {
               const isEditing = editingId === order.id;
               
               return (
-                <div key={order.id} className={`label-item ${isEditing ? 'is-editing' : ''}`} style={{ position: 'relative' }}>
+                <div key={order.labelKey} className={`label-item ${isEditing ? 'is-editing' : ''}`} style={{ position: 'relative' }}>
                   {!isEditing && (
                     <div className="label-actions print-hide">
                       {order.geoConfidence >= 0.7 && (
@@ -160,26 +341,47 @@ export default function Labels() {
 
                   {isEditing ? (
                     <div className="print-hide" style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', fontSize: '10px' }}>
-                      <input type="text" name="name" value={editForm.name} onChange={handleInputChange} placeholder="Name" style={{ padding: '2px 4px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '2px' }} />
-                      <input type="text" name="address1" value={editForm.address1} onChange={handleInputChange} placeholder="Addr 1" style={{ padding: '2px 4px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '2px' }} />
-                      <input type="text" name="address2" value={editForm.address2 || ''} onChange={handleInputChange} placeholder="Addr 2" style={{ padding: '2px 4px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '2px' }} />
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '2px' }}>
-                        <input type="text" name="city" value={editForm.city} onChange={handleInputChange} placeholder="City" style={{ padding: '2px 4px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '2px', width: '100%' }} />
-                        <input type="text" name="state" value={editForm.state} onChange={handleInputChange} placeholder="State" style={{ padding: '2px 4px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '2px', width: '100%' }} />
-                        <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} placeholder="PC" style={{ padding: '2px 4px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '2px', width: '100%' }} />
+                      <input type="text" name="name" value={editForm.name} onChange={handleInputChange} placeholder="Name" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                      <input type="text" name="address1" value={editForm.address1} onChange={handleInputChange} placeholder="Addr 1" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                      <input type="text" name="address2" value={editForm.address2 || ''} onChange={handleInputChange} placeholder="Addr 2" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '4px' }}>
+                        <input type="text" name="city" value={editForm.city} onChange={handleInputChange} placeholder="City" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }} />
+                        <input type="text" name="state" value={editForm.state} onChange={handleInputChange} placeholder="State" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }} />
+                        <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} placeholder="PC" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }} />
                       </div>
-                      <div style={{ display: 'flex', gap: '4px', marginTop: 'auto' }}>
-                        <button onClick={handleSave} style={{ flex: 1, background: 'var(--success)', color: 'white', border: 'none', borderRadius: '2px', padding: '2px', fontSize: '10px', cursor: 'pointer' }}>Save</button>
-                        <button onClick={handleCancelEdit} style={{ flex: 1, background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '2px', padding: '2px', fontSize: '10px', cursor: 'pointer' }}>Cancel</button>
+                      <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '4px' }}>
+                        <button 
+                          onClick={handleSave} 
+                          style={{ flex: 1, background: 'var(--success)', color: 'white', border: 'none', borderRadius: '4px', padding: '6px 0', fontSize: '11px', fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)' }}
+                          onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                          onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          onClick={handleCancelEdit} 
+                          style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '4px', padding: '6px 0', fontSize: '11px', fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
                   ) : (
                     <>
                       {!order.isExtra && <span className="label-to">To</span>}
-                      <strong className="label-name">
-                        {order.name} <span className="label-orderID">({order.orderId})</span>
-                        {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
-                      </strong>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <strong className="label-name">
+                          {order.name} <span className="label-orderID">({order.orderId})</span>
+                          {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
+                        </strong>
+                        {order.totalParts > 1 && (
+                          <span style={{ fontSize: '9px', fontWeight: 700, background: '#eee', padding: '1px 4px', borderRadius: '3px' }}>
+                            {order.partIndex} / {order.totalParts}
+                          </span>
+                        )}
+                      </div>
                       {!order.isExtra && (
                         <div className="label-address-container">
                           {order.useGeoAddress && order.geoFormatted ? (
@@ -196,18 +398,26 @@ export default function Labels() {
                           {order.country && order.country.toLowerCase() !== 'australia' && (
                             <span className="label-address">{order.country}</span>
                           )}
-
-                          {/* API Verified Badge moved to top right */}
-                          {/* Toggle moved to top right */}
                         </div>
                       )}
                       <div style={{ flex: 1 }}></div>
-                      <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
+                      <div className="label-sku">
+                        {order.partIndex === 1 && order.totalParts > 1 && (
+                          <div style={{ fontWeight: 700, borderBottom: '1.5px solid var(--text-primary)', marginBottom: '3px', textAlign: 'right', fontSize: '10px', color: 'var(--text-primary)', paddingBottom: '1px' }}>
+                            TOTAL ITEMS: {order.totalQuantity}
+                          </div>
+                        )}
+                        {order.items && order.items.map((item, idx) => (
+                          <div key={idx} className="item-line">
+                            {item.sku} X <b>{item.quantity}</b>
+                          </div>
+                        ))}
+                      </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2px' }}>
                         <div style={{ flex: 1 }}>
-                          {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
+                          {!!order.buyerNote && !order.isExtra && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
                         </div>
-                        {order.geoConfidence > 0 && (
+                        {order.geoConfidence > 0 && !order.isExtra && (
                           <span style={{ fontSize: '7px', opacity: 0.5, color: 'var(--text-secondary)', marginLeft: '8px' }}>
                             Conf: {(order.geoConfidence * 100).toFixed(0)}%
                           </span>
@@ -293,9 +503,14 @@ export default function Labels() {
                         )
                       )}
                     </td>
-                    <td style={{ padding: '12px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <span className="label-sku" dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
-                      {!!order.buyerNote && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
+                    <td style={{ padding: '12px', maxWidth: '300px' }}>
+                      <div className="label-sku" style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '4px', borderBottom: '1px solid var(--border)' }}>
+                          TOTAL: {order.items?.reduce((acc, i) => acc + i.quantity, 0) || 0} ITEMS
+                        </div>
+                        <span dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
+                        {!!order.buyerNote && (<div className="label-buyer-note" style={{ textAlign: 'right', marginTop: '4px' }}> ** {order.buyerNote} **</div>) }
+                      </div>
                     </td>
                     <td style={{ padding: '12px' }}>
                       {isEditing ? (
