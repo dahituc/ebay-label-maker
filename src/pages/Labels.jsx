@@ -278,8 +278,8 @@ export default function Labels() {
                   )}
                   <div style={{ flex: 1 }}></div>
                   <div className="label-sku">
-                     {order.items && order.items.length > 3 && (
-                        <div className="item-line" style={{ fontWeight: 700, borderBottom: '1.5px solid var(--text-primary)', marginBottom: '3px', textAlign: 'right', fontSize: '10px', color: 'var(--text-primary)', paddingBottom: '1px' }}>
+                     {order.items && order.items.length > 1 && (
+                        <div className="item-line" style={{ fontWeight: 700, marginBottom: '2px', textAlign: 'right', fontSize: '9px', color: 'var(--text-primary)' }}>
                           TOTAL ITEMS: {order.items.reduce((acc, i) => acc + i.quantity, 0)}
                         </div>
                      )}
@@ -402,9 +402,9 @@ export default function Labels() {
                       )}
                       <div style={{ flex: 1 }}></div>
                       <div className="label-sku">
-                        {order.partIndex === 1 && order.totalParts > 1 && (
-                          <div style={{ fontWeight: 700, borderBottom: '1.5px solid var(--text-primary)', marginBottom: '3px', textAlign: 'right', fontSize: '10px', color: 'var(--text-primary)', paddingBottom: '1px' }}>
-                            TOTAL ITEMS: {order.totalQuantity}
+                        {(order.partIndex === 1 && (order.totalParts > 1 || (order.items && order.items.length > 1))) && (
+                          <div style={{ fontWeight: 700, marginBottom: '2px', textAlign: 'right', fontSize: '9px', color: 'var(--text-primary)' }}>
+                            TOTAL ITEMS: {order.totalQuantity || order.items?.reduce((acc, i) => acc + i.quantity, 0)}
                           </div>
                         )}
                         {order.items && order.items.map((item, idx) => (
@@ -505,7 +505,7 @@ export default function Labels() {
                     </td>
                     <td style={{ padding: '12px', maxWidth: '300px' }}>
                       <div className="label-sku" style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)', marginBottom: '4px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-primary)', marginBottom: '2px' }}>
                           TOTAL: {order.items?.reduce((acc, i) => acc + i.quantity, 0) || 0} ITEMS
                         </div>
                         <span dangerouslySetInnerHTML={{ __html: order.itemsSummary }} />
