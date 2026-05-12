@@ -1,0 +1,24 @@
+{
+  "name": "eBay Label Maker",
+  "short_name": "LabelMaker",
+  "description": "Process eBay order CSVs and generate optimised thermal labels.",
+  "start_url": "/ebay-label-maker/",
+  "scope": "/ebay-label-maker/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
