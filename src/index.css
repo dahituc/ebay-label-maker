@@ -342,7 +342,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
   margin-bottom: 1px;
 }
 
-.label-sku > b {
+.item-line > b {
   font-size: 12px;
   font-weight: 900;
 }
@@ -722,5 +722,9 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
 
   .label-sku {
     color: #333;
+  }
+
+  .label-conf{
+    display: none !important;
   }
 }

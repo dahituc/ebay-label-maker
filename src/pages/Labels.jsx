@@ -403,7 +403,7 @@ export default function Labels() {
                       <div style={{ flex: 1 }}></div>
                       <div className="label-sku">
                         {order.partIndex === 1 && order.totalParts > 1 && (
-                          <div style={{ fontWeight: 700, borderBottom: '1.5px solid var(--text-primary)', marginBottom: '3px', textAlign: 'right', fontSize: '10px', color: 'var(--text-primary)', paddingBottom: '1px' }}>
+                          <div style={{ fontWeight: 700, marginBottom: '3px', textAlign: 'right', fontSize: '10px', color: 'var(--text-primary)', paddingBottom: '1px' }}>
                             TOTAL ITEMS: {order.totalQuantity}
                           </div>
                         )}
@@ -418,7 +418,7 @@ export default function Labels() {
                           {!!order.buyerNote && !order.isExtra && (<span className="label-buyer-note"> ** {order.buyerNote} **</span>) }
                         </div>
                         {order.geoConfidence > 0 && !order.isExtra && (
-                          <span style={{ fontSize: '7px', opacity: 0.5, color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                          <span className='label-conf' style={{ fontSize: '7px', opacity: 0.5, color: 'var(--text-secondary)', marginLeft: '8px' }}>
                             Conf: {(order.geoConfidence * 100).toFixed(0)}%
                           </span>
                         )}
