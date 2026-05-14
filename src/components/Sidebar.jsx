@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen } from 'lucide-react';
+import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen, ShoppingBag } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import AppLogo from './AppLogo';
 import { getSetting, saveSetting } from '../db/database';
@@ -80,6 +80,10 @@ export default function Sidebar({ className = "" }) {
         <NavLink to="/labels" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Print Labels">
           <Printer />
           {!collapsed && <span>Print Labels</span>}
+        </NavLink>
+        <NavLink to="/amazon" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Amazon Converter">
+          <ShoppingBag />
+          {!collapsed && <span>Amazon Converter</span>}
         </NavLink>
 
         {/* Spacer */}

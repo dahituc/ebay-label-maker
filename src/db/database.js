@@ -18,6 +18,16 @@ db.version(2).stores({
   orders: '++id, orderId, buyerUsername, batchTimestamp, status'
 });
 
+// v3: Add amazon_conversions table
+db.version(3).stores({
+  settings: 'key',
+  daily_usage: 'date',
+  csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
+  orders: '++id, orderId, buyerUsername, batchTimestamp, status',
+  amazon_conversions: '++id, filename, createdAt'
+});
+
+
 // Helper to get a setting
 export async function getSetting(key) {
   const setting = await db.settings.get(key);

@@ -30,6 +30,17 @@ export default function Settings() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Sender Details
+  const [senderName, setSenderName] = useState('');
+  const [senderBusiness, setSenderBusiness] = useState('');
+  const [senderAddress1, setSenderAddress1] = useState('');
+  const [senderAddress2, setSenderAddress2] = useState('');
+  const [senderSuburb, setSenderSuburb] = useState('');
+  const [senderState, setSenderState] = useState('');
+  const [senderPostcode, setSenderPostcode] = useState('');
+  const [senderPhone, setSenderPhone] = useState('');
+  const [senderEmail, setSenderEmail] = useState('');
+
   const location = useLocation();
 
   useEffect(() => {
@@ -66,6 +77,17 @@ export default function Settings() {
 
         const savedTheme = await getSetting('theme');
         if (savedTheme) setCurrentTheme(savedTheme);
+
+        // Load Sender Details
+        setSenderName(await getSetting('sender_name') || '');
+        setSenderBusiness(await getSetting('sender_business_name') || '');
+        setSenderAddress1(await getSetting('sender_address_line_1') || '');
+        setSenderAddress2(await getSetting('sender_address_line_2') || '');
+        setSenderSuburb(await getSetting('sender_suburb') || '');
+        setSenderState(await getSetting('sender_state') || '');
+        setSenderPostcode(await getSetting('sender_postcode') || '');
+        setSenderPhone(await getSetting('sender_phone') || '');
+        setSenderEmail(await getSetting('sender_email') || '');
 
         // Fetch font list for search
         const res = await fetch('https://cdn.jsdelivr.net/gh/hasinhayder/google-fonts/subsets/latin/display/fonts.json');
@@ -104,6 +126,17 @@ export default function Settings() {
       await saveSetting('label_font', selectedFont);
       await saveSetting('palette', selectedPalette);
       await saveSetting('theme', currentTheme);
+      
+      // Save Sender Details
+      await saveSetting('sender_name', senderName);
+      await saveSetting('sender_business_name', senderBusiness);
+      await saveSetting('sender_address_line_1', senderAddress1);
+      await saveSetting('sender_address_line_2', senderAddress2);
+      await saveSetting('sender_suburb', senderSuburb);
+      await saveSetting('sender_state', senderState);
+      await saveSetting('sender_postcode', senderPostcode);
+      await saveSetting('sender_phone', senderPhone);
+      await saveSetting('sender_email', senderEmail);
       
       // Update CSS variables immediately
       document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
@@ -620,8 +653,85 @@ export default function Settings() {
             </button>
           </div>
         </div>
+        <div className="card" style={{ height: '100%', gridColumn: 'span 1' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Box size={20} />
+            Sender Details (AusPost)
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem' }}>
+            These details will be used as the 'From' address in the AusPost import file.
+          </p>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Sender Name</label>
+                <input type="text" value={senderName} onChange={e => setSenderName(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Full Name" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Business Name</label>
+                <input type="text" value={senderBusiness} onChange={e => setSenderBusiness(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Optional" />
+              </div>
+            </div>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Address Line 1</label>
+              <input type="text" value={senderAddress1} onChange={e => setSenderAddress1(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Street Address" />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Address Line 2</label>
+              <input type="text" value={senderAddress2} onChange={e => setSenderAddress2(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Apartment, suite, etc." />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Suburb</label>
+                <input type="text" value={senderSuburb} onChange={e => setSenderSuburb(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>State</label>
+                <input type="text" value={senderState} onChange={e => setSenderState(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Postcode</label>
+                <input type="text" value={senderPostcode} onChange={e => setSenderPostcode(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Phone Number</label>
+                <input type="text" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Email Address</label>
+                <input type="email" value={senderEmail} onChange={e => setSenderEmail(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+            </div>
+
+            <button 
+              onClick={handleSave}
+              style={{
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '8px',
+                transition: 'var(--transition)'
+              }}
+            >
+              {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+              Save Sender Details
+            </button>
+          </div>
+        </div>
 
         {isAdmin && (
           <div className="card" style={{ borderTop: '4px solid var(--danger)', height: '100%' }}>
