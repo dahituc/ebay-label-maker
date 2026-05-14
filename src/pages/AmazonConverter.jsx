@@ -91,12 +91,12 @@ export default function AmazonConverter() {
       if (last) {
         setPreviewData(last.data);
         setFile({ name: last.filename });
-        // Re-generate blob from data
-        const worksheet = XLSX.utils.json_to_sheet(last.data, { header: AUSPOST_HEADERS });
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        setConvertedBlob(new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+        // Re-generate blob from data (CSV)
+        const csv = Papa.unparse({
+          fields: AUSPOST_HEADERS,
+          data: last.data
+        });
+        setConvertedBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
         setIsDone(true);
       }
     };
@@ -161,22 +161,30 @@ export default function AmazonConverter() {
           }
         });
 
-        ausPostRow['Send From Name'] = senderSettings.name;
-        ausPostRow['Send From Business Name'] = senderSettings.business;
-        ausPostRow['Send From Address Line 1'] = senderSettings.address1;
-        ausPostRow['Send From Address Line 2'] = senderSettings.address2;
-        ausPostRow['Send From Suburb'] = senderSettings.suburb;
-        ausPostRow['Send From State'] = senderSettings.state;
-        ausPostRow['Send From Postcode'] = senderSettings.postcode;
+        ausPostRow['Send From Name'] = (senderSettings.name || '').substring(0, 35);
+        ausPostRow['Send From Business Name'] = (senderSettings.business || '').substring(0, 40);
+        ausPostRow['Send From Address Line 1'] = (senderSettings.address1 || '').substring(0, 40);
+        ausPostRow['Send From Address Line 2'] = (senderSettings.address2 || '').substring(0, 40);
+        ausPostRow['Send From Suburb'] = (senderSettings.suburb || '').substring(0, 30);
+        ausPostRow['Send From State'] = (senderSettings.state || '').toUpperCase().trim();
+        ausPostRow['Send From Postcode'] = (senderSettings.postcode || '').substring(0, 4);
         ausPostRow['Send From Phone Number'] = senderSettings.phone;
         ausPostRow['Send From Email Address'] = senderSettings.email;
 
-        ausPostRow['Send Tracking Notifications'] = 'Y';
-        ausPostRow['Item Packaging Type'] = 'X-small';
-        ausPostRow['Item Delivery Service'] = 'Standard Post';
-        ausPostRow['Item Weight'] = '250 g';
-        ausPostRow['Item Dangerous Goods Flag'] = 'N';
-        ausPostRow['Signature On Delivery'] = 'N';
+        // Apply Recipient Truncations and Formatting
+        ausPostRow['Deliver To Name'] = (ausPostRow['Deliver To Name'] || '').substring(0, 35);
+        ausPostRow['Deliver To Address Line 1'] = (ausPostRow['Deliver To Address Line 1'] || '').substring(0, 40);
+        ausPostRow['Deliver To Suburb'] = (ausPostRow['Deliver To Suburb'] || '').substring(0, 40);
+        ausPostRow['Deliver To State'] = (ausPostRow['Deliver To State'] || '').toUpperCase().trim();
+        ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
+        ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
+
+        ausPostRow['Send Tracking Notifications'] = 'YES';
+        ausPostRow['Item Packaging Type'] = 'AP_SATCHEL_XS';
+        ausPostRow['Item Delivery Service'] = 'PP';
+        ausPostRow['Item Weight'] = '0.25';
+        ausPostRow['Item Dangerous Goods Flag'] = 'NO';
+        ausPostRow['Signature On Delivery'] = 'NO';
 
         REQUIRED_FIELDS.forEach(field => {
           if (!ausPostRow[field]) {
@@ -193,11 +201,11 @@ export default function AmazonConverter() {
         setError('Mandatory fields are missing. Please check your settings and the uploaded file.');
       }
 
-      const worksheet = XLSX.utils.json_to_sheet(ausPostRows, { header: AUSPOST_HEADERS });
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const csv = Papa.unparse({
+        fields: AUSPOST_HEADERS,
+        data: ausPostRows
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       
       // Save to DB
       await db.amazon_conversions.clear();
@@ -223,7 +231,7 @@ export default function AmazonConverter() {
     const url = URL.createObjectURL(convertedBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `auspost_import_${new Date().getTime()}.xlsx`;
+    a.download = `auspost_import_${new Date().getTime()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -283,11 +291,11 @@ export default function AmazonConverter() {
               <button 
                 onClick={convertData}
                 disabled={isProcessing}
-                className="button-primary"
-                style={{ padding: '14px 40px' }}
+                className="btn btn-primary"
+                style={{ padding: '16px 48px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'var(--shadow-lg)' }}
               >
-                {isProcessing ? <RefreshCcw className="animate-spin" /> : <RefreshCcw />}
-                Start Conversion
+                {isProcessing ? <RefreshCcw size={20} className="animate-spin" /> : <RefreshCcw size={20} />}
+                {isProcessing ? 'Processing...' : 'Start Conversion'}
               </button>
             )}
           </div>
@@ -319,13 +327,13 @@ export default function AmazonConverter() {
             <div style={{ display: 'flex', gap: '12px' }}>
                <button 
                 onClick={() => { setFile(null); setPreviewData(null); db.amazon_conversions.clear(); }}
-                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '10px 20px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: 'pointer' }}
+                className="btn btn-secondary"
               >
                 Cancel
               </button>
-              <button onClick={handleDownload} className="button-success" style={{ padding: '10px 24px', background: 'var(--success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={handleDownload} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Download size={18} />
-                Download XLSX
+                Download CSV
               </button>
             </div>
           </div>
