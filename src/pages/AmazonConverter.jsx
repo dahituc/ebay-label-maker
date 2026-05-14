@@ -70,8 +70,28 @@ const AMAZON_TO_AUSPOST_MAP = {
   'ship-postal-code': 'Deliver To Postcode',
   'ship-zip': 'Deliver To Postcode',
   'ship-phone-number': 'Deliver To Phone Number',
+  'buyer-email': 'Deliver To Email Address',
   'product-name': 'Item Description',
   'sku': 'Item Description' // Fallback if product-name is missing
+};
+
+const STATE_ABBREVIATIONS = {
+  'VICTORIA': 'VIC',
+  'NEW SOUTH WALES': 'NSW',
+  'QUEENSLAND': 'QLD',
+  'WESTERN AUSTRALIA': 'WA',
+  'SOUTH AUSTRALIA': 'SA',
+  'TASMANIA': 'TAS',
+  'NORTHERN TERRITORY': 'NT',
+  'AUSTRALIAN CAPITAL TERRITORY': 'ACT',
+  'VIC': 'VIC',
+  'NSW': 'NSW',
+  'QLD': 'QLD',
+  'WA': 'WA',
+  'SA': 'SA',
+  'TAS': 'TAS',
+  'NT': 'NT',
+  'ACT': 'ACT'
 };
 
 export default function AmazonConverter() {
@@ -95,6 +115,8 @@ export default function AmazonConverter() {
         const csv = Papa.unparse({
           fields: AUSPOST_HEADERS,
           data: last.data
+        }, {
+          header: false
         });
         setConvertedBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
         setIsDone(true);
@@ -175,7 +197,11 @@ export default function AmazonConverter() {
         ausPostRow['Deliver To Name'] = (ausPostRow['Deliver To Name'] || '').substring(0, 35);
         ausPostRow['Deliver To Address Line 1'] = (ausPostRow['Deliver To Address Line 1'] || '').substring(0, 40);
         ausPostRow['Deliver To Suburb'] = (ausPostRow['Deliver To Suburb'] || '').substring(0, 40);
-        ausPostRow['Deliver To State'] = (ausPostRow['Deliver To State'] || '').toUpperCase().trim();
+        
+        // Normalize State
+        const rawState = (ausPostRow['Deliver To State'] || '').toUpperCase().trim();
+        ausPostRow['Deliver To State'] = STATE_ABBREVIATIONS[rawState] || rawState.substring(0, 3);
+        
         ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
         ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
 
@@ -204,6 +230,8 @@ export default function AmazonConverter() {
       const csv = Papa.unparse({
         fields: AUSPOST_HEADERS,
         data: ausPostRows
+      }, {
+        header: false // Remove the header line on top as requested
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       
