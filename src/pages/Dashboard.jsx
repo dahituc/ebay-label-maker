@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { parseEbayCsv } from '../services/csvParser.js';
 import { validateAddresses, validatePostcode, startBackgroundValidation } from '../services/addressValidator.js';
 import { db } from '../db/database.js';
+import { NotificationService } from '../services/notificationService.js';
 import { UploadCloud, CheckCircle, AlertTriangle, FileText, Clock, Archive, Trash2, Printer, Edit2, Info, Loader2 } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -52,6 +53,7 @@ export default function Dashboard() {
     setIsProcessing(true);
     setProgress('Parsing CSV...');
     setError('');
+    NotificationService.showParsingStarted(file.name);
 
     try {
       // 1. Parse CSV
@@ -131,7 +133,9 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'An error occurred during processing.');
+      const errorMsg = err.message || 'An error occurred during processing.';
+      setError(errorMsg);
+      NotificationService.showParsingError(errorMsg);
     } finally {
       setIsProcessing(false);
       setProgress('');

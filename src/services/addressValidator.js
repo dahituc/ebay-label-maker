@@ -1,4 +1,5 @@
 import { db, getSetting, getDailyUsage, incrementDailyUsage } from '../db/database.js';
+import { NotificationService } from './notificationService.js';
 
 const DAILY_LIMIT = 3000;
 
@@ -105,7 +106,7 @@ export async function validateAddresses(addresses, deps = {}) {
       const apiResults = await runGeoapifyBatch(addresses, apiKey, _fetch);
       await _incrementDailyUsage(today, addresses.length);
 
-      return addresses.map((addr, index) => {
+      const results = addresses.map((addr, index) => {
         if (isParcelAddress(addr)) {
           return {
             ...addr,
@@ -127,6 +128,12 @@ export async function validateAddresses(addresses, deps = {}) {
           error: isApiValid ? null : (confidence > 0 ? `API Confidence too low (${confidence.toFixed(2)})` : 'API could not verify')
         };
       });
+      
+      // Notify with number of verified addresses
+      const verifiedCount = results.filter(r => r.status === 'valid').length;
+      NotificationService.showValidationComplete(verifiedCount);
+      
+      return results;
     } catch (err) {
       console.error("Geoapify Batch API Error", err);
       // Fallback to local validation
@@ -183,7 +190,13 @@ export async function validateAddresses(addresses, deps = {}) {
       };
     });
 
-    return [...valid, ...finalApiResults];
+    const results = [...valid, ...finalApiResults];
+    
+    // Notify with total number of verified addresses
+    const verifiedCount = results.filter(r => r.status === 'valid').length;
+    NotificationService.showValidationComplete(verifiedCount);
+    
+    return results;
   } catch (err) {
     console.error("Geoapify Batch API Error", err);
     return [...valid, ...unverified.map(a => ({ ...a, error: 'API Error' }))];
@@ -267,9 +280,11 @@ export async function startBackgroundValidation(batchTimestamp, deps = {}) {
       detail: { batchTimestamp, count: updates.length } 
     }));
 
+    // Send browser notification
+    NotificationService.showValidationComplete(updates.length);
+
   } catch (err) {
-    console.error("Background Validation Error:", err);
-    // Reset status so user can retry or see error
+    console.error("Background Validation Error:", err);    NotificationService.showParsingError('API verification failed. Please try again.');    // Reset status so user can retry or see error
     const orders = await db.orders.where('batchTimestamp').equals(batchTimestamp).toArray();
     const toReset = orders.filter(o => o.status === 'verifying');
     await db.orders.bulkPut(toReset.map(o => ({ ...o, status: 'unverified', error: 'API Error: ' + err.message })));

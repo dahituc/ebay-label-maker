@@ -10,6 +10,7 @@ import Guide from './pages/Guide';
 import AmazonConverter from './pages/AmazonConverter';
 import { getSetting } from './db/database';
 import { applyLabelFont } from './services/fontLoader';
+import { NotificationService } from './services/notificationService';
 
 function App() {
   useEffect(() => {
@@ -27,6 +28,13 @@ function App() {
       if (palette) document.documentElement.setAttribute('data-palette', palette);
     };
     applyGlobalSettings();
+  }, []);
+
+  // Request notification permission when app loads
+  useEffect(() => {
+    NotificationService.requestPermission().catch(err => 
+      console.warn('Notification permission request failed:', err)
+    );
   }, []);
 
   return (
