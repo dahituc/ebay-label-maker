@@ -54,9 +54,6 @@ export default function Review() {
   };
 
   const handleSave = async () => {
-    // Re-run simple local validation as a hint, but we allow forced saving
-    const isValid = validatePostcode(editForm.state, editForm.postcode);
-    
     // Save updated order to DB, forcing valid status if they manually edit and submit
     await db.orders.update(editingId, {
       ...editForm,
@@ -66,6 +63,23 @@ export default function Review() {
 
     setEditingId(null);
     setEditForm(null);
+  };
+
+  const buildAddressQuery = (record) => {
+    if (!record) return '';
+    return [record.address1, record.address2, record.city, record.state, record.postcode, record.country]
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const openInGoogleMaps = (record) => {
+    const query = buildAddressQuery(record);
+    if (!query) return;
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   return (
@@ -136,6 +150,20 @@ export default function Review() {
                     )}
                   </div>
 
+                  {!isEditing && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '16px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => openInGoogleMaps(order)}
+                        disabled={!buildAddressQuery(order)}
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        Open in Google Maps
+                      </button>
+                    </div>
+                  )}
+
                   {order.error && !isEditing && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
@@ -197,13 +225,24 @@ export default function Review() {
                         </div>
                       </div>
                       
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-                        <button className="btn" onClick={handleCancelEdit} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', gap: '4px', alignItems: 'center', padding: '8px 16px', cursor: 'pointer', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          <X size={16} /> Cancel
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => openInGoogleMaps(editForm)}
+                          disabled={!buildAddressQuery(editForm)}
+                          style={{ display: 'flex', gap: '4px', alignItems: 'center', whiteSpace: 'nowrap' }}
+                        >
+                          Open in Google Maps
                         </button>
-                        <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <Check size={16} /> Save & Mark Valid
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+                          <button className="btn" onClick={handleCancelEdit} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', gap: '4px', alignItems: 'center', padding: '8px 16px', cursor: 'pointer', borderRadius: 'var(--radius-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            <X size={16} /> Cancel
+                          </button>
+                          <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <Check size={16} /> Save & Mark Valid
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (

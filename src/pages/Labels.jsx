@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../db/database.js';
-import { Printer, List, LayoutGrid, ChevronLeft, Edit2, CheckCircle } from 'lucide-react';
+import { Printer, List, LayoutGrid, ChevronLeft, Edit2, CheckCircle, MapPin } from 'lucide-react';
 
 export default function Labels() {
   const [searchParams] = useSearchParams();
@@ -153,6 +153,23 @@ export default function Labels() {
     await db.orders.update(order.id, {
       useGeoAddress: !order.useGeoAddress
     });
+  };
+
+  const buildAddressQuery = (order) => {
+    if (!order) return '';
+    return [order.address1, order.address2, order.city, order.state, order.postcode, order.country]
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const openInGoogleMaps = (order) => {
+    const query = buildAddressQuery(order);
+    if (!query) return;
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   // Determine batch display info
@@ -344,6 +361,14 @@ export default function Labels() {
                         </button>
                       )}
                       <button 
+                        className="address-toggle-btn"
+                        onClick={() => openInGoogleMaps(order)}
+                        title="Open address in Google Maps"
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <MapPin size={10} /> Map
+                      </button>
+                      <button 
                         className="edit-label-btn"
                         onClick={() => handleEditClick(order)}
                         title="Edit label"
@@ -377,6 +402,14 @@ export default function Labels() {
                         </label>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '4px' }}>
+                        <button
+                          type="button"
+                          onClick={() => openInGoogleMaps(editForm)}
+                          style={{ flex: 1, background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '6px 0', fontSize: '11px', fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                        >
+                          <MapPin size={12} />
+                          Open in Maps
+                        </button>
                         <button 
                           onClick={handleSave} 
                           style={{ flex: 1, background: 'var(--success)', color: 'white', border: 'none', borderRadius: '4px', padding: '6px 0', fontSize: '11px', fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)' }}
