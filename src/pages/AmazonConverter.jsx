@@ -116,7 +116,7 @@ export default function AmazonConverter() {
           fields: AUSPOST_HEADERS,
           data: last.data
         }, {
-          header: false
+          header: true
         });
         setConvertedBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
         setIsDone(true);
@@ -231,7 +231,7 @@ export default function AmazonConverter() {
         fields: AUSPOST_HEADERS,
         data: ausPostRows
       }, {
-        header: false // Remove the header line on top as requested
+        header: true
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       
@@ -272,7 +272,7 @@ export default function AmazonConverter() {
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <FileText size={28} color="var(--accent)" />
-          Amazon to AusPost Converter
+          Amazn To AuPost
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>
           Convert Amazon Order TXT/CSV to Australia Post tracked label import format.

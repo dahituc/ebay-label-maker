@@ -81,9 +81,9 @@ export default function Sidebar({ className = "" }) {
           <Printer />
           {!collapsed && <span>Print Labels</span>}
         </NavLink>
-        <NavLink to="/amazon" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Amazon Converter">
+        <NavLink to="/amazon" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Amazn To AuPost">
           <ShoppingBag />
-          {!collapsed && <span>Amazon Converter</span>}
+          {!collapsed && <span>Amazn To AuPost</span>}
         </NavLink>
 
         {/* Spacer */}
