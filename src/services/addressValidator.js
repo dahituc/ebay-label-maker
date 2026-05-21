@@ -2,6 +2,12 @@ import { db, getSetting, getDailyUsage, incrementDailyUsage } from '../db/databa
 
 const DAILY_LIMIT = 3000;
 
+export const isParcelAddress = (addr) => {
+  const a1 = (addr.address1 || '').trim().toLowerCase();
+  const a2 = (addr.address2 || '').trim().toLowerCase();
+  return a1.startsWith('parcel') || a2.startsWith('parcel');
+};
+
 export const validatePostcode = (state, postcode) => {
   if (!state || !postcode) return false;
   const pc = parseInt(postcode, 10);
@@ -62,6 +68,7 @@ export async function validateAddresses(addresses, deps = {}) {
   } catch (err) {
     console.warn("DB access failed, skipping API validation.", err);
     return addresses.map(addr => {
+        if (isParcelAddress(addr)) return { ...addr, status: 'unverified', error: 'Parcel Address - Needs manual confirmation', showPhoneOnLabel: addr.showPhoneOnLabel !== undefined ? addr.showPhoneOnLabel : true };
         if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
         const isLocalValid = validatePostcode(addr.state, addr.postcode);
         return { ...addr, status: isLocalValid ? 'valid' : 'unverified' };
@@ -72,6 +79,7 @@ export async function validateAddresses(addresses, deps = {}) {
   if (!navigator.onLine) {
     console.log("App is offline, skipping API address validation.");
     return addresses.map(addr => {
+      if (isParcelAddress(addr)) return { ...addr, status: 'unverified', error: 'Parcel Address - Needs manual confirmation', showPhoneOnLabel: addr.showPhoneOnLabel !== undefined ? addr.showPhoneOnLabel : true };
       if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
       const isLocalValid = validatePostcode(addr.state, addr.postcode);
       return { ...addr, status: isLocalValid ? 'valid' : 'unverified', error: 'Skipped: Offline' };
@@ -81,6 +89,7 @@ export async function validateAddresses(addresses, deps = {}) {
 
   if (!useGeoApify) {
     return addresses.map(addr => {
+        if (isParcelAddress(addr)) return { ...addr, status: 'unverified', error: 'Parcel Address - Needs manual confirmation', showPhoneOnLabel: addr.showPhoneOnLabel !== undefined ? addr.showPhoneOnLabel : true };
         if (addr.manualFlag) return { ...addr, status: 'manual', error: validatePostcode(addr.state, addr.postcode) ? null : 'Local Validation Failed' };
         const isLocalValid = validatePostcode(addr.state, addr.postcode);
         return { ...addr, status: isLocalValid ? 'valid' : 'unverified' };
@@ -97,6 +106,14 @@ export async function validateAddresses(addresses, deps = {}) {
       await _incrementDailyUsage(today, addresses.length);
 
       return addresses.map((addr, index) => {
+        if (isParcelAddress(addr)) {
+          return {
+            ...addr,
+            status: 'unverified',
+            error: 'Parcel Address - Needs manual confirmation',
+            showPhoneOnLabel: addr.showPhoneOnLabel !== undefined ? addr.showPhoneOnLabel : true
+          };
+        }
         const result = apiResults[index];
         const confidence = result?.rank?.confidence || 0;
         const isApiValid = confidence >= 0.7;
@@ -121,7 +138,14 @@ export async function validateAddresses(addresses, deps = {}) {
   const unverified = [];
 
   for (const addr of addresses) {
-    if (addr.manualFlag) {
+    if (isParcelAddress(addr)) {
+      unverified.push({
+        ...addr,
+        status: 'unverified',
+        error: 'Parcel Address - Needs manual confirmation',
+        showPhoneOnLabel: addr.showPhoneOnLabel !== undefined ? addr.showPhoneOnLabel : true
+      });
+    } else if (addr.manualFlag) {
       const isLocalValid = validatePostcode(addr.state, addr.postcode);
       valid.push({ 
         ...addr, 
@@ -214,6 +238,14 @@ export async function startBackgroundValidation(batchTimestamp, deps = {}) {
 
     // 4. Update Orders
     const updates = unverified.map((addr, index) => {
+      if (isParcelAddress(addr)) {
+        return {
+          ...addr,
+          status: 'unverified',
+          error: 'Parcel Address - Needs manual confirmation',
+          showPhoneOnLabel: addr.showPhoneOnLabel !== undefined ? addr.showPhoneOnLabel : true
+        };
+      }
       const result = apiResults[index];
       const confidence = result?.rank?.confidence || 0;
       const isApiValid = confidence >= 0.7;

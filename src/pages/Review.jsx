@@ -126,7 +126,7 @@ export default function Review() {
                         Order {order.orderId}
                         {order.isExtra && <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>(Extra Items)</span>}
                       </div>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Buyer: {order.buyerUsername}</div>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Buyer: {order.buyerUsername}{order.phone ? ` | Phone: ${order.phone}` : ''}</div>
                     </div>
                     
                     {!isEditing && (
@@ -179,6 +179,22 @@ export default function Review() {
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>Postcode</label>
                           <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                         </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.9rem' }}>Mobile Number</label>
+                          <input type="text" name="phone" value={editForm.phone || ''} onChange={handleInputChange} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', marginTop: '24px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.95rem' }}>
+                            <input 
+                              type="checkbox" 
+                              name="showPhoneOnLabel" 
+                              checked={!!editForm.showPhoneOnLabel} 
+                              onChange={(e) => setEditForm(prev => ({ ...prev, showPhoneOnLabel: e.target.checked }))} 
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            Show mobile number on label
+                          </label>
+                        </div>
                       </div>
                       
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
@@ -192,7 +208,7 @@ export default function Review() {
                     </div>
                   ) : (
                     <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                      {order.name}<br />
+                      {order.name}{order.phone && order.showPhoneOnLabel ? ` (Mob: ${order.phone})` : ''}<br />
                       {order.address1}{order.address2 ? `, ${order.address2}` : ''}<br />
                       {order.city}, {order.state} {order.postcode}<br />
                       {order.country}

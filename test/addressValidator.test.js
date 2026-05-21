@@ -10,6 +10,12 @@ const __dirname = path.dirname(__filename);
 
 async function runTest() {
   console.log('--- Running Address Validator Tests ---');
+  // Mock navigator.onLine for Node test environment
+  if (typeof globalThis.navigator === 'undefined') {
+    globalThis.navigator = { onLine: true };
+  } else {
+    Object.defineProperty(globalThis.navigator, 'onLine', { value: true, writable: true, configurable: true });
+  }
   try {
     // 1. Test local validatePostcode helper
     assert.strictEqual(validatePostcode('WA', '6065'), true);
@@ -74,7 +80,7 @@ async function runTest() {
       }
     };
 
-    // Inject a fake unverified order to trigger the API flow
+    // Inject a fake unverified order to trigger the API flow, and a parcel address order
     const testOrders = [
       ...parsedOrders,
       {
@@ -86,6 +92,17 @@ async function runTest() {
         state: 'ZZZ', // Invalid state will cause local check to fail
         postcode: '0000',
         country: 'Australia'
+      },
+      {
+        orderIds: '99-88888',
+        buyerUsername: 'test_parcel',
+        name: 'Parcel Recipient',
+        address1: 'Parcel Locker 10128 38294',
+        city: 'Landsdale',
+        state: 'WA',
+        postcode: '6065',
+        country: 'Australia',
+        phone: '0412345678'
       }
     ];
 
@@ -93,9 +110,10 @@ async function runTest() {
 
     assert(results.length === testOrders.length, 'Should return same number of items');
     
-    // Check that original items are valid
+    // Check that standard items and standard invalid (now standard API-resolved) items are valid
     const validOrders = results.filter(r => r.status === 'valid');
-    assert(validOrders.length === testOrders.length, 'All items should end up valid (including the mocked API resolved one)');
+    // All original items (11) + 1 invalid standard resolved = 12. The 1 parcel address is unverified.
+    assert.strictEqual(validOrders.length, testOrders.length - 1, 'All standard items should end up valid');
 
     // Verify DB bounds checks and batch fetch were called
     assert(usageChecked, 'Should have checked daily usage');
@@ -105,6 +123,11 @@ async function runTest() {
 
     const invalidOriginal = results.find(r => r.buyerUsername === 'test_invalid');
     assert.strictEqual(invalidOriginal.status, 'valid', 'The mocked API should have converted the invalid order to valid based on 0.9 confidence');
+
+    const parcelOriginal = results.find(r => r.buyerUsername === 'test_parcel');
+    assert.strictEqual(parcelOriginal.status, 'unverified', 'Parcel addresses should be unverified');
+    assert.strictEqual(parcelOriginal.error, 'Parcel Address - Needs manual confirmation', 'Parcel addresses should require manual confirmation');
+    assert.strictEqual(parcelOriginal.showPhoneOnLabel, true, 'Parcel addresses should default to showing phone on label');
 
     console.log('✅ ALL TESTS PASSED: Postcodes verified, Geoapify Batch mocked successfully.\n');
   } catch (error) {

@@ -46,6 +46,7 @@ export const parseEbayCsv = (fileOrString) => {
                 buyerUsername: item['Buyer Username'],
                 buyerName: item['Buyer Name'],
                 postToName: item['Post To Name'],
+                phone: item['Post To Phone'] || '',
                 address1: item['Post To Address 1'],
                 address2: item['Post To Address 2'],
                 city: item['Post To City'],
@@ -68,6 +69,9 @@ export const parseEbayCsv = (fileOrString) => {
             }
             if (!order.buyerUsername && item['Buyer Username']) {
               order.buyerUsername = item['Buyer Username'];
+            }
+            if (!order.phone && item['Post To Phone']) {
+              order.phone = item['Post To Phone'];
             }
             if (!order.address1 && item['Post To Address 1']) {
               order.address1 = item['Post To Address 1'];
@@ -106,6 +110,7 @@ export const parseEbayCsv = (fileOrString) => {
                    orderIds: order.orderNumber,
                    buyerUsername: order.buyerUsername,
                    name: order.postToName,
+                   phone: order.phone || '',
                    address1: order.address1,
                    address2: order.address2,
                    city: order.city,
@@ -133,11 +138,16 @@ export const parseEbayCsv = (fileOrString) => {
                 if (order.buyerNote && !existing.buyerNote.includes(order.buyerNote)) {
                   existing.buyerNote = existing.buyerNote ? `${existing.buyerNote} | ${order.buyerNote}` : order.buyerNote;
                 }
+                // Keep first non-empty phone
+                if (!existing.phone && order.phone) {
+                  existing.phone = order.phone;
+                }
              } else {
                 consolidatedMap.set(mergeKey, {
                    orderNumbers: [order.orderNumber],
                    buyerUsername: order.buyerUsername,
                    postToName: order.postToName,
+                   phone: order.phone || '',
                    address1: order.address1,
                    address2: order.address2,
                    city: order.city,
@@ -156,6 +166,7 @@ export const parseEbayCsv = (fileOrString) => {
                 orderIds: merged.orderNumbers.join(', '),
                 buyerUsername: merged.buyerUsername,
                 name: merged.postToName,
+                phone: merged.phone || '',
                 address1: merged.address1,
                 address2: merged.address2,
                 city: merged.city,

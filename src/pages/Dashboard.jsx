@@ -71,12 +71,19 @@ export default function Dashboard() {
       const currentTimestamp = new Date().toISOString();
       const initialProcessed = parsedOrders.map(o => {
         const isLocalValid = validatePostcode(o.state, o.postcode);
+        const startsWithParcel = (o.address1?.trim().toLowerCase().startsWith('parcel') || o.address2?.trim().toLowerCase().startsWith('parcel'));
         
         // If API is enabled, we mark it as 'verifying' even if local passes 
         // to get the extra confidence/formatting from Geoapify.
         // Otherwise, we fallback to local validation result.
         let status = 'unverified';
-        if (apiEnabled) {
+        let error = null;
+        let showPhoneOnLabel = startsWithParcel;
+
+        if (startsWithParcel) {
+          status = 'unverified';
+          error = 'Parcel Address - Needs manual confirmation';
+        } else if (apiEnabled) {
           status = 'verifying';
         } else if (isLocalValid) {
           status = 'valid';
@@ -87,7 +94,9 @@ export default function Dashboard() {
           orderId: o.orderIds,
           batchTimestamp: currentTimestamp,
           batchFilename: file.name,
-          status
+          status,
+          error,
+          showPhoneOnLabel
         };
       });
 

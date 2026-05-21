@@ -430,6 +430,8 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
 }
 
 .label-item.is-editing {
+  height: auto;
+  min-height: var(--label-height);
   border-style: solid;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);

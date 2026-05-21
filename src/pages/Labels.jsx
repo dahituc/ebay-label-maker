@@ -256,6 +256,20 @@ export default function Labels() {
                   {!order.isExtra && <span className="label-to">To</span>}
                   <strong className="label-name">
                     {order.name} <span className="label-orderID">({order.orderId})</span>
+                    {order.phone && order.showPhoneOnLabel && (
+                      <span
+                        className="label-phone"
+                        style={{
+                          display: 'block',
+                          marginTop: '2px',
+                          fontSize: '11px',
+                          fontWeight: 'normal',
+                          color: 'var(--text-primary)',
+                        }}
+                      >
+                        {order.phone}
+                      </span>
+                    )}
                     {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
                   </strong>
                   {!order.isExtra && (
@@ -349,6 +363,19 @@ export default function Labels() {
                         <input type="text" name="state" value={editForm.state} onChange={handleInputChange} placeholder="State" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }} />
                         <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} placeholder="PC" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }} />
                       </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '4px', alignItems: 'center' }}>
+                        <input type="text" name="phone" value={editForm.phone || ''} onChange={handleInputChange} placeholder="Mobile" style={{ padding: '4px 6px', fontSize: '10px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', cursor: 'pointer', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                          <input 
+                            type="checkbox" 
+                            name="showPhoneOnLabel" 
+                            checked={!!editForm.showPhoneOnLabel} 
+                            onChange={(e) => setEditForm(prev => ({ ...prev, showPhoneOnLabel: e.target.checked }))} 
+                            style={{ cursor: 'pointer', width: '12px', height: '12px' }}
+                          />
+                          Show phone
+                        </label>
+                      </div>
                       <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '4px' }}>
                         <button 
                           onClick={handleSave} 
@@ -374,6 +401,7 @@ export default function Labels() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <strong className="label-name">
                           {order.name} <span className="label-orderID">({order.orderId})</span>
+                          {order.phone && order.showPhoneOnLabel && <span className="label-phone" style={{ display: "block", fontSize: '11px', fontWeight: 'normal', color: 'var(--text-primary)' }}>{order.phone}</span>}
                           {order.isExtra && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(Extra Items)</span>}
                         </strong>
                         {order.totalParts > 1 && (
@@ -454,6 +482,20 @@ export default function Labels() {
                       ) : (
                         <>
                           {order.name}
+                          {order.phone && order.showPhoneOnLabel && (
+  <span
+    className="label-phone"
+    style={{
+      display: 'block',
+      marginTop: '2px',
+      fontSize: '11px',
+      fontWeight: 'normal',
+      color: 'var(--text-primary)',
+    }}
+  >
+    {order.phone}
+  </span>
+)}
                           {order.isExtra && <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>(Extra)</span>}
                         </>
                       )}
@@ -467,6 +509,19 @@ export default function Labels() {
                             <input type="text" name="city" value={editForm.city} onChange={handleInputChange} style={{ flex: 2, padding: '4px', fontSize: '0.9rem' }} />
                             <input type="text" name="state" value={editForm.state} onChange={handleInputChange} style={{ flex: 1, padding: '4px', fontSize: '0.9rem' }} />
                             <input type="text" name="postcode" value={editForm.postcode} onChange={handleInputChange} style={{ flex: 1, padding: '4px', fontSize: '0.9rem' }} />
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                            <input type="text" name="phone" value={editForm.phone || ''} onChange={handleInputChange} placeholder="Mobile Number" style={{ flex: 1, padding: '4px', fontSize: '0.85rem' }} />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              <input 
+                                type="checkbox" 
+                                name="showPhoneOnLabel" 
+                                checked={!!editForm.showPhoneOnLabel} 
+                                onChange={(e) => setEditForm(prev => ({ ...prev, showPhoneOnLabel: e.target.checked }))} 
+                                style={{ cursor: 'pointer' }}
+                              />
+                              Show on label
+                            </label>
                           </div>
                         </div>
                       ) : (
