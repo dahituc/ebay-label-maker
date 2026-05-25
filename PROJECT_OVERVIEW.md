@@ -30,6 +30,16 @@ A robust, local-first React web application built with Vite to process and manip
    - **UI & Routing**: React Router manages navigation between Dashboard, Review, Labels, and Settings views.
    - **Print Optimization**: Uses strict thermal label CSS layouts designed using print queries (`@media print` and `@page`) with a dedicated 'Print' button triggering `window.print()`.
 
+6. **Amazon → AusPost CSV Generator & Label Printing**
+   - Parses Amazon order exports and maps them to Australia Post CSV formats for bulk submission.
+   - Offers a dedicated `Amazon Converter` view that previews converted CSV rows and allows exporting the AusPost-compatible CSV.
+   - Supports generating the same printable thermal labels from converted Amazon orders, with the same validation and merge rules used for eBay batches.
+
+7. **Invoice Generation — WIP**
+   - Work-in-progress feature to generate invoice documents from processed batches.
+   - Produces print-ready invoice previews and PDF/print output; currently marked as preview with limited fields and formatting adjustments ongoing.
+   - Future work: configurable invoice templates, tax calculation hooks, and CSV export for bookkeeping.
+
 ## Project File Target Structure
 
 ```

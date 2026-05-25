@@ -10,6 +10,8 @@ A local-first, premium web application for processing eBay order exports into st
 - **Label Customization**: Set custom thermal label dimensions and choose from Google Fonts.
 - **Privacy First**: All data is stored locally in your browser (IndexedDB). No backend, no server.
 - **Premium Design**: Clean, modern interface with dark mode and smooth transitions.
+- **Amazon → AusPost Conversion**: Convert Amazon order exports into Australia Post CSVs and generate printable thermal labels.
+- **Invoice Generation (WIP)**: Work-in-progress invoice creation and print-ready output (preview available in the app).
 
 ## 🛠️ Tech Stack
 
@@ -37,6 +39,8 @@ A local-first, premium web application for processing eBay order exports into st
    - Upload your eBay CSV to the **Dashboard**.
    - Review any address issues.
    - Print your consolidated labels.
+   - For Amazon orders, use the **Amazon Converter** page to transform Amazon exports into AusPost-compatible CSVs and generate labels.
+   - Note: Invoice generation/printing is a WIP feature available in preview; expect limited functionality.
 
 ## 🖨️ Label Specifications
 

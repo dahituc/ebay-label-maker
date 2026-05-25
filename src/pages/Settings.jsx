@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getSetting, saveSetting, getDailyUsage, db } from '../db/database';
 import { applyLabelFont } from '../services/fontLoader';
-import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search, Trash2, Sun, Moon, Box, Settings as SettingsIcon, Eye, RotateCcw, CloudCog } from 'lucide-react';
+import { Key, Activity, Save, CheckCircle, AlertCircle, Layout, Type, Search, Trash2, Sun, Moon, Box, Settings as SettingsIcon, Eye, RotateCcw, CloudCog, FileText } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PreviewDialog from '../components/PreviewDialog';
 
@@ -29,6 +29,11 @@ export default function Settings() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [sampleInvoiceCount, setSampleInvoiceCount] = useState(0);
+  const [invoicePrefix, setInvoicePrefix] = useState('INV');
+  const [invoiceTerms, setInvoiceTerms] = useState('Payment due within 14 days.');
+  const [invoiceTaxRate, setInvoiceTaxRate] = useState(10);
+  const [invoiceLogoUrl, setInvoiceLogoUrl] = useState('');
 
   // Sender Details
   const [senderName, setSenderName] = useState('');
@@ -49,6 +54,59 @@ export default function Settings() {
       setIsAdmin(true);
     }
   }, [location.search]);
+
+  const SAMPLE_INVOICE_ITEMS = [
+    { description: 'Premium Widget', unitPrice: 49.95, sampleData: true },
+    { description: 'Shipping Sticker Pack', unitPrice: 12.5, sampleData: true },
+    { description: 'Factory Parts Kit', unitPrice: 129.99, sampleData: true },
+    { description: 'Express Packaging', unitPrice: 24.95, sampleData: true },
+    { description: 'Desk Lamp', unitPrice: 69.0, sampleData: true },
+    { description: 'Notebook Bundle', unitPrice: 19.99, sampleData: true },
+    { description: 'Warranty Extension', unitPrice: 14.5, sampleData: true }
+  ];
+
+  const refreshSampleInvoiceCount = async () => {
+    const count = await db.invoice_items.filter(item => item.sampleData === true).count();
+    setSampleInvoiceCount(count);
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      refreshSampleInvoiceCount();
+    }
+  }, [isAdmin]);
+
+  const loadSampleInvoiceData = async () => {
+    const existingCount = await db.invoice_items.filter(item => item.sampleData === true).count();
+    if (existingCount > 0) {
+      window.alert('Sample invoice items already exist. Clear them first before loading again.');
+      return;
+    }
+
+    await db.invoice_items.bulkAdd(SAMPLE_INVOICE_ITEMS);
+    setSampleInvoiceCount(SAMPLE_INVOICE_ITEMS.length);
+    window.alert('Sample invoice items have been added to the database.');
+  };
+
+  const clearSampleInvoiceData = async () => {
+    const confirmClear = window.confirm('Clear sample invoice items from the database? This will remove only sample item records.');
+    if (!confirmClear) return;
+
+    const sampleItems = await db.invoice_items.filter(item => item.sampleData === true).toArray();
+    if (sampleItems.length === 0) {
+      window.alert('No sample invoice items found.');
+      return;
+    }
+
+    await db.transaction('rw', db.invoice_items, async () => {
+      for (const record of sampleItems) {
+        await db.invoice_items.delete(record.id);
+      }
+    });
+
+    setSampleInvoiceCount(0);
+    window.alert('Sample invoice items have been cleared.');
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -88,6 +146,10 @@ export default function Settings() {
         setSenderPostcode(await getSetting('sender_postcode') || '');
         setSenderPhone(await getSetting('sender_phone') || '');
         setSenderEmail(await getSetting('sender_email') || '');
+        setInvoicePrefix(await getSetting('invoice_prefix') || 'INV');
+        setInvoiceTerms(await getSetting('invoice_terms') || 'Payment due within 14 days.');
+        setInvoiceTaxRate(parseFloat(await getSetting('invoice_tax_rate')) || 10);
+        setInvoiceLogoUrl(await getSetting('invoice_logo_url') || '');
 
         // Fetch font list for search
         const res = await fetch('https://cdn.jsdelivr.net/gh/hasinhayder/google-fonts/subsets/latin/display/fonts.json');
@@ -137,6 +199,10 @@ export default function Settings() {
       await saveSetting('sender_postcode', senderPostcode);
       await saveSetting('sender_phone', senderPhone);
       await saveSetting('sender_email', senderEmail);
+      await saveSetting('invoice_prefix', invoicePrefix);
+      await saveSetting('invoice_terms', invoiceTerms);
+      await saveSetting('invoice_tax_rate', invoiceTaxRate.toString());
+      await saveSetting('invoice_logo_url', invoiceLogoUrl);
       
       // Update CSS variables immediately
       document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
@@ -733,6 +799,55 @@ export default function Settings() {
           </div>
         </div>
 
+        <div className="card" style={{ height: '100%' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FileText size={20} />
+            Invoice Settings
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem' }}>
+            Configure invoice defaults, tax rate, and logo for printed invoices.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Invoice Prefix</label>
+              <input type="text" value={invoicePrefix} onChange={e => setInvoicePrefix(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="INV" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Tax Rate (%)</label>
+              <input type="number" value={invoiceTaxRate} onChange={e => setInvoiceTaxRate(parseFloat(e.target.value) || 0)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="10" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Invoice Terms</label>
+              <textarea value={invoiceTerms} onChange={e => setInvoiceTerms(e.target.value)} rows={4} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Invoice Logo URL</label>
+              <input type="text" value={invoiceLogoUrl} onChange={e => setInvoiceLogoUrl(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="https://example.com/logo.png" />
+            </div>
+          </div>
+          <button 
+            onClick={handleSave}
+            style={{
+              background: 'var(--accent)',
+              color: 'white',
+              border: 'none',
+              padding: '12px 20px',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'var(--transition)'
+            }}
+          >
+            {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+            Save Invoice Defaults
+          </button>
+        </div>
+
         {isAdmin && (
           <div className="card" style={{ borderTop: '4px solid var(--danger)', height: '100%' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--danger)' }}>
@@ -743,6 +858,50 @@ export default function Settings() {
               Wipe all transaction data, including uploaded batches, orders, and processing history. 
               Your <strong>API configuration</strong> and <strong>visual preferences</strong> will be automatically saved and preserved.
             </p>
+
+            <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(254, 226, 226, 0.65)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--danger)' }}>Sample Invoice Data</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Load a ready-made invoice dataset with items and prices for testing.
+                  </div>
+                </div>
+                <span style={{ fontWeight: 700, color: 'var(--danger)' }}>{sampleInvoiceCount} records</span>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={loadSampleInvoiceData}
+                  style={{
+                    background: 'var(--danger)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'var(--transition)'
+                  }}
+                >
+                  Load Sample Invoice Data
+                </button>
+                <button
+                  onClick={clearSampleInvoiceData}
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--danger)',
+                    border: '1px solid var(--danger)',
+                    padding: '10px 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'var(--transition)'
+                  }}
+                >
+                  Clear Sample Data
+                </button>
+              </div>
+            </div>
 
             <button 
               onClick={() => setShowResetDialog(true)}
