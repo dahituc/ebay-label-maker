@@ -27,6 +27,36 @@ db.version(3).stores({
   amazon_conversions: '++id, filename, createdAt'
 });
 
+db.version(4).stores({
+  settings: 'key',
+  daily_usage: 'date',
+  csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
+  orders: '++id, orderId, buyerUsername, batchTimestamp, status',
+  amazon_conversions: '++id, filename, createdAt',
+  invoice_items: '++id, description, unitPrice, sampleData',
+  invoices: '++id, invoiceNumber, issueDate, dueDate, clientName, clientCompany'
+});
+
+db.version(5).stores({
+  settings: 'key',
+  daily_usage: 'date',
+  csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
+  orders: '++id, orderId, buyerUsername, batchTimestamp, status',
+  amazon_conversions: '++id, filename, createdAt',
+  invoice_items: '++id, description, unitPrice, sampleData',
+  invoices: '++id, invoiceNumber, issueDate, dueDate, clientName, clientCompany, createdAt'
+});
+
+db.version(6).stores({
+  settings: 'key',
+  daily_usage: 'date',
+  csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
+  orders: '++id, orderId, buyerUsername, batchTimestamp, status',
+  amazon_conversions: '++id, filename, createdAt',
+  invoice_items: '++id, description, unitPrice, sampleData',
+  invoices: '++id, invoiceNumber, issueDate, dueDate, clientName, clientCompany, createdAt, status'
+});
+
 
 // Helper to get a setting
 export async function getSetting(key) {

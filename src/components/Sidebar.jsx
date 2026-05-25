@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen, ShoppingBag } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, AlertCircle, Printer, Settings, Box, Moon, Sun, PanelLeftClose, PanelLeftOpen, BookOpen, ShoppingBag, FileText, List } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import AppLogo from './AppLogo';
 import { getSetting, saveSetting } from '../db/database';
@@ -25,6 +25,16 @@ export default function Sidebar({ className = "" }) {
     };
     loadTheme();
   }, []);
+
+  const location = useLocation();
+  const [invoiceGroupOpen, setInvoiceGroupOpen] = useState(false);
+
+  useEffect(() => {
+    const path = location.pathname || '';
+    if (path.startsWith('/invoices') || path.startsWith('/invoice-items')) {
+      setInvoiceGroupOpen(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     localStorage.setItem('ebay-label-sidebar', collapsed ? 'collapsed' : 'expanded');
@@ -81,6 +91,29 @@ export default function Sidebar({ className = "" }) {
           <Printer />
           {!collapsed && <span>Print Labels</span>}
         </NavLink>
+        <button
+          type="button"
+          className={`nav-link ${invoiceGroupOpen ? 'active' : ''}`}
+          onClick={() => setInvoiceGroupOpen(prev => !prev)}
+          title="Invoices"
+          style={{ justifyContent: collapsed ? 'center' : 'space-between' }}
+        >
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
+            <FileText />
+            {!collapsed && <span>Invoices</span>}
+          </div>
+          {!collapsed && <span style={{ opacity: 0.65 }}>{invoiceGroupOpen ? '▾' : '▸'}</span>}
+        </button>
+        {!collapsed && invoiceGroupOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '16px', marginBottom: '8px' }}>
+            <NavLink to="/invoices" className={({isActive}) => isActive ? "nav-link sidebar-subitem active" : "nav-link sidebar-subitem"} title="Invoice Builder" style={{ paddingLeft: '12px' }}>
+              <span>Invoice Builder</span>
+            </NavLink>
+            <NavLink to="/invoice-items" className={({isActive}) => isActive ? "nav-link sidebar-subitem active" : "nav-link sidebar-subitem"} title="Invoice Items" style={{ paddingLeft: '12px' }}>
+              <span>Invoice Items</span>
+            </NavLink>
+          </div>
+        )}
         <NavLink to="/amazon" className={({isActive}) => isActive ? "nav-link active" : "nav-link"} title="Amazn To AuPost">
           <ShoppingBag />
           {!collapsed && <span>Amazn To AuPost</span>}

@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Review from './pages/Review';
 import Labels from './pages/Labels';
+import Invoices from './pages/Invoices';
+import InvoiceItems from './pages/InvoiceItems';
 import Guide from './pages/Guide';
 import AmazonConverter from './pages/AmazonConverter';
 import { getSetting } from './db/database';
@@ -49,6 +51,8 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/review" element={<Review />} />
                 <Route path="/labels" element={<Labels />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/invoice-items" element={<InvoiceItems />} />
                 <Route path="/amazon" element={<AmazonConverter />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/guide" element={<Guide />} />
