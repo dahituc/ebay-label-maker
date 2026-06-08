@@ -526,20 +526,10 @@ export default function EbayConverter() {
         setError('Mandatory fields are missing. Please check your settings and the uploaded file.');
       }
 
-      const addressPayload = ausPostRows.map(row => ({
-        address1: row['Deliver To Address Line 1'],
-        address2: row['Deliver To Address Line 2'],
-        city: row['Deliver To Suburb'],
-        state: row['Deliver To State'],
-        postcode: row['Deliver To Postcode']
-      }));
-
-      const validationResults = await validateAddresses(addressPayload);
-
-      const finalAusPostRows = ausPostRows.map((row, idx) => ({
+      const finalAusPostRows = ausPostRows.map((row) => ({
         ...row,
-        validationStatus: validationResults[idx].status,
-        validationError: validationResults[idx].error
+        validationStatus: undefined,
+        validationError: undefined
       }));
 
       const csv = Papa.unparse({
@@ -567,6 +557,33 @@ export default function EbayConverter() {
       setError('An error occurred during conversion.');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const validateBulkAddresses = async () => {
+    setIsValidating(true);
+    setError(null);
+    const addressPayload = previewData.map(row => ({
+      address1: row['Deliver To Address Line 1'],
+      address2: row['Deliver To Address Line 2'],
+      city: row['Deliver To Suburb'],
+      state: row['Deliver To State'],
+      postcode: row['Deliver To Postcode']
+    }));
+
+    try {
+      const validationResults = await validateAddresses(addressPayload);
+      const nextRows = previewData.map((row, idx) => ({
+        ...row,
+        validationStatus: validationResults[idx].status,
+        validationError: validationResults[idx].error
+      }));
+      await updatePreviewRows(nextRows);
+    } catch (err) {
+      console.error(err);
+      setError('An error occurred during bulk validation.');
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -672,11 +689,20 @@ export default function EbayConverter() {
               Conversion Preview
             </h2>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-               {previewData.some(r => r.validationStatus && r.validationStatus !== 'valid') && (
+               {previewData.some(r => r.validationStatus !== 'valid') && (
                  <span style={{ color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 600 }}>
-                   Fix invalid addresses to download
+                   {previewData.some(r => !r.validationStatus) ? 'Validate addresses before downloading' : 'Fix invalid addresses to download'}
                  </span>
                )}
+               <button 
+                 onClick={validateBulkAddresses} 
+                 className="btn btn-primary" 
+                 disabled={isValidating || previewData.length === 0}
+                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+               >
+                 {isValidating ? <RefreshCcw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                 {isValidating ? 'Validating...' : 'Validate Addresses'}
+               </button>
                <button 
                 onClick={() => { setFile(null); setPreviewData(null); setHasDownloaded(false); setSelectedRows([]); setPrintedRowIds([]); setActiveLabelRow(null); db.ebay_conversions.clear(); }}
                 className="btn btn-secondary"
@@ -686,8 +712,8 @@ export default function EbayConverter() {
               <button 
                 onClick={handleDownload} 
                 className="btn btn-success" 
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: previewData.some(r => r.validationStatus && r.validationStatus !== 'valid') ? 0.5 : 1 }}
-                disabled={previewData.some(r => r.validationStatus && r.validationStatus !== 'valid')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: previewData.some(r => r.validationStatus !== 'valid') ? 0.5 : 1 }}
+                disabled={previewData.some(r => r.validationStatus !== 'valid')}
               >
                 <Download size={18} />
                 Download CSV
@@ -758,11 +784,20 @@ export default function EbayConverter() {
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {row.validationStatus && row.validationStatus !== 'valid' && (
-                              <AlertCircle size={14} color="var(--danger)" title={row.validationError || 'Invalid Address'} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span title={formatAddress(row)}>{formatAddress(row)}</span>
+                            </div>
+                            {row.validationStatus === 'valid' && (
+                              <span style={{ color: 'var(--success)', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle size={12} /> Valid
+                              </span>
                             )}
-                            <span title={formatAddress(row)}>{formatAddress(row)}</span>
+                            {row.validationStatus && row.validationStatus !== 'valid' && (
+                              <span style={{ color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }} title={row.validationError || 'Invalid Address'}>
+                                <AlertCircle size={12} /> {row.validationError || 'Invalid'}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.itemDescription || '—'}</td>
