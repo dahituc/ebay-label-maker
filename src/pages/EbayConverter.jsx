@@ -139,7 +139,9 @@ export default function EbayConverter() {
     return Number(quantity) || 1;
   };
   const buildItemDescription = (items) => {
-    return (items || []).map(item => `${item.customLabel || item.productName || ''}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).filter(Boolean).join(' | ');
+    const totalQty = (items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const desc = (items || []).map(item => `${item.customLabel || item.productName || ''}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).filter(Boolean).join(' | ');
+    return totalQty > 0 ? `Qty:${totalQty} ${desc}` : desc;
   };
   const createRowId = (prefix, index) => `${prefix || 'ebay'}-${index}-${Date.now()}`;
 
@@ -493,9 +495,16 @@ export default function EbayConverter() {
         ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
         ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
 
+        const postageService = resolveValue(normalizedRow, ['postage-service']) || '';
+        const isExpress = postageService.toLowerCase().includes('express');
+
+        // Add Item Description to Additional Label Information 1
+        const currentLabelInfo = ausPostRow['Additional Label Information 1'] || '';
+        ausPostRow['Additional Label Information 1'] = `${currentLabelInfo}${currentLabelInfo && itemDescription ? ' - ' : ''}${itemDescription}`.substring(0, 50);
+
         ausPostRow['Send Tracking Notifications'] = 'YES';
         ausPostRow['Item Packaging Type'] = 'AP_SATCHEL_XS';
-        ausPostRow['Item Delivery Service'] = 'PP';
+        ausPostRow['Item Delivery Service'] = isExpress ? 'EXP' : 'PP';
         ausPostRow['Item Description'] = itemDescription.substring(0, 50);
         ausPostRow['Item Weight'] = '0.25';
         ausPostRow['Item Dangerous Goods Flag'] = 'NO';
@@ -592,7 +601,7 @@ export default function EbayConverter() {
     const url = URL.createObjectURL(convertedBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `auspost_import_${new Date().getTime()}.csv`;
+    a.download = `auspost_from_ebay_import_${new Date().getTime()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     setHasDownloaded(true);
@@ -779,7 +788,12 @@ export default function EbayConverter() {
                         </td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontWeight: 600 }}>{row.sourceOrderNumber || row.orderId || '—'}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: 600 }}>{row.sourceOrderNumber || row.orderId || '—'}</span>
+                              {row['Item Delivery Service'] === 'EXP' && (
+                                <span style={{ background: '#f59e0b', color: 'white', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, textTransform: 'uppercase' }}>Express</span>
+                              )}
+                            </div>
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{row.sourceRecipientName || '—'}</span>
                           </div>
                         </td>

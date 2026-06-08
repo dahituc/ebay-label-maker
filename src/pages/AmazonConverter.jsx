@@ -425,6 +425,10 @@ export default function AmazonConverter() {
         ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
         ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
 
+        // Add Item Description to Additional Label Information 1
+        const currentLabelInfo = ausPostRow['Additional Label Information 1'] || '';
+        ausPostRow['Additional Label Information 1'] = `${currentLabelInfo}${currentLabelInfo && itemDescription ? ' - ' : ''}${itemDescription}`.substring(0, 50);
+
         ausPostRow['Send Tracking Notifications'] = 'YES';
         ausPostRow['Item Packaging Type'] = 'AP_SATCHEL_XS';
         ausPostRow['Item Delivery Service'] = 'PP';
@@ -491,7 +495,7 @@ export default function AmazonConverter() {
     const url = URL.createObjectURL(convertedBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `auspost_import_${new Date().getTime()}.csv`;
+    a.download = `auspost_from_amazon_import_${new Date().getTime()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     setHasDownloaded(true);
