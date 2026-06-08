@@ -59,8 +59,6 @@ const REQUIRED_FIELDS = [
 ];
 
 const EBAY_TO_AUSPOST_MAP = {
-  'sales-record-number': 'Additional Label Information 1',
-  'order-number': 'Additional Label Information 1',
   'buyer-name': 'Deliver To Name',
   'post-to-name': 'Deliver To Name',
   'post-to-address-1': 'Deliver To Address Line 1',
