@@ -57,6 +57,17 @@ db.version(6).stores({
   invoices: '++id, invoiceNumber, issueDate, dueDate, clientName, clientCompany, createdAt, status'
 });
 
+db.version(7).stores({
+  settings: 'key',
+  daily_usage: 'date',
+  csv_logs: '++id, filename, processedAt, totalRows, validCount, invalidCount',
+  orders: '++id, orderId, buyerUsername, batchTimestamp, status',
+  amazon_conversions: '++id, filename, createdAt',
+  invoice_items: '++id, description, unitPrice, sampleData',
+  invoices: '++id, invoiceNumber, issueDate, dueDate, clientName, clientCompany, createdAt, status',
+  ebay_conversions: '++id, filename, createdAt'
+});
+
 
 // Helper to get a setting
 export async function getSetting(key) {
