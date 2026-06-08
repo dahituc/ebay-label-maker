@@ -130,7 +130,7 @@ export default function EbayConverter() {
 
   const resolveValue = (row, aliases) => aliases.map(alias => row[normalizeKey(alias)]).find(Boolean);
 
-  const getOrderId = (row) => resolveValue(row, ['sales-record-number', 'order-number']);
+  const getOrderId = (row) => resolveValue(row, ['order-number', 'sales-record-number']);
   const getBuyerName = (row) => resolveValue(row, ['post-to-name', 'buyer-name', 'recipient-name', 'buyer']);
   const getBuyerEmail = (row) => resolveValue(row, ['buyer-email', 'buyer-email-address', 'email']);
   const getItemQuantity = (row) => {
@@ -433,6 +433,18 @@ export default function EbayConverter() {
         email: await getSetting('sender_email') || ''
       };
 
+      const altSenderSettings = {
+        name: await getSetting('alt_sender_name') || '',
+        business: await getSetting('alt_sender_business_name') || '',
+        address1: await getSetting('alt_sender_address_line_1') || '',
+        address2: await getSetting('alt_sender_address_line_2') || '',
+        suburb: await getSetting('alt_sender_suburb') || '',
+        state: await getSetting('alt_sender_state') || '',
+        postcode: await getSetting('alt_sender_postcode') || '',
+        phone: await getSetting('alt_sender_phone') || '',
+        email: await getSetting('alt_sender_email') || ''
+      };
+
       let hasMissingMandatory = false;
       const missing = new Set();
 
@@ -440,7 +452,7 @@ export default function EbayConverter() {
 
       data.forEach((row, index) => {
         const normalizedRow = normalizeRow(row);
-        const sourceOrderNumber = resolveValue(normalizedRow, ['sales-record-number', 'order-number', 'order-id']);
+        const sourceOrderNumber = resolveValue(normalizedRow, ['order-number', 'sales-record-number', 'order-id']);
         const buyerName = getBuyerName(normalizedRow);
         
         if (!sourceOrderNumber && !buyerName) return;
@@ -475,7 +487,7 @@ export default function EbayConverter() {
         });
 
         const itemDescription = buildItemDescription(items);
-        const sourceOrderNumber = resolveValue(normalizedRow, ['sales-record-number', 'order-number', 'order-id']);
+        const sourceOrderNumber = resolveValue(normalizedRow, ['order-number', 'sales-record-number', 'order-id']);
         const sourceRecipientName = resolveValue(normalizedRow, ['recipient-name', 'buyer-name', 'buyer']);
 
         ausPostRow['Send From Name'] = (senderSettings.name || '').substring(0, 35);
@@ -499,6 +511,19 @@ export default function EbayConverter() {
         
         ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
         ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
+
+        // Use alternate sender address when shipping to ACT (if configured)
+        if (ausPostRow['Deliver To State'] === 'ACT' && altSenderSettings.address1) {
+          ausPostRow['Send From Name'] = (altSenderSettings.name || '').substring(0, 35);
+          ausPostRow['Send From Business Name'] = (altSenderSettings.business || '').substring(0, 40);
+          ausPostRow['Send From Address Line 1'] = (altSenderSettings.address1 || '').substring(0, 40);
+          ausPostRow['Send From Address Line 2'] = (altSenderSettings.address2 || '').substring(0, 40);
+          ausPostRow['Send From Suburb'] = (altSenderSettings.suburb || '').substring(0, 30);
+          ausPostRow['Send From State'] = (altSenderSettings.state || '').toUpperCase().trim();
+          ausPostRow['Send From Postcode'] = (altSenderSettings.postcode || '').substring(0, 4);
+          ausPostRow['Send From Phone Number'] = altSenderSettings.phone;
+          ausPostRow['Send From Email Address'] = altSenderSettings.email;
+        }
 
         const postageService = resolveValue(normalizedRow, ['postage-service']) || '';
         const isExpress = postageService.toLowerCase().includes('express');

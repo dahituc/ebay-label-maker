@@ -46,6 +46,17 @@ export default function Settings() {
   const [senderPhone, setSenderPhone] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
 
+  // Alternate Sender Details (used when shipping to ACT)
+  const [altSenderName, setAltSenderName] = useState('');
+  const [altSenderBusiness, setAltSenderBusiness] = useState('');
+  const [altSenderAddress1, setAltSenderAddress1] = useState('');
+  const [altSenderAddress2, setAltSenderAddress2] = useState('');
+  const [altSenderSuburb, setAltSenderSuburb] = useState('');
+  const [altSenderState, setAltSenderState] = useState('');
+  const [altSenderPostcode, setAltSenderPostcode] = useState('');
+  const [altSenderPhone, setAltSenderPhone] = useState('');
+  const [altSenderEmail, setAltSenderEmail] = useState('');
+
   const location = useLocation();
 
   useEffect(() => {
@@ -146,6 +157,18 @@ export default function Settings() {
         setSenderPostcode(await getSetting('sender_postcode') || '');
         setSenderPhone(await getSetting('sender_phone') || '');
         setSenderEmail(await getSetting('sender_email') || '');
+
+        // Load Alternate Sender Details
+        setAltSenderName(await getSetting('alt_sender_name') || '');
+        setAltSenderBusiness(await getSetting('alt_sender_business_name') || '');
+        setAltSenderAddress1(await getSetting('alt_sender_address_line_1') || '');
+        setAltSenderAddress2(await getSetting('alt_sender_address_line_2') || '');
+        setAltSenderSuburb(await getSetting('alt_sender_suburb') || '');
+        setAltSenderState(await getSetting('alt_sender_state') || '');
+        setAltSenderPostcode(await getSetting('alt_sender_postcode') || '');
+        setAltSenderPhone(await getSetting('alt_sender_phone') || '');
+        setAltSenderEmail(await getSetting('alt_sender_email') || '');
+
         setInvoicePrefix(await getSetting('invoice_prefix') || 'INV');
         setInvoiceTerms(await getSetting('invoice_terms') || 'Payment due within 14 days.');
         setInvoiceTaxRate(parseFloat(await getSetting('invoice_tax_rate')) || 10);
@@ -199,6 +222,18 @@ export default function Settings() {
       await saveSetting('sender_postcode', senderPostcode);
       await saveSetting('sender_phone', senderPhone);
       await saveSetting('sender_email', senderEmail);
+
+      // Save Alternate Sender Details
+      await saveSetting('alt_sender_name', altSenderName);
+      await saveSetting('alt_sender_business_name', altSenderBusiness);
+      await saveSetting('alt_sender_address_line_1', altSenderAddress1);
+      await saveSetting('alt_sender_address_line_2', altSenderAddress2);
+      await saveSetting('alt_sender_suburb', altSenderSuburb);
+      await saveSetting('alt_sender_state', altSenderState);
+      await saveSetting('alt_sender_postcode', altSenderPostcode);
+      await saveSetting('alt_sender_phone', altSenderPhone);
+      await saveSetting('alt_sender_email', altSenderEmail);
+
       await saveSetting('invoice_prefix', invoicePrefix);
       await saveSetting('invoice_terms', invoiceTerms);
       await saveSetting('invoice_tax_rate', invoiceTaxRate.toString());
@@ -795,6 +830,86 @@ export default function Settings() {
             >
               {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
               Save Sender Details
+            </button>
+          </div>
+        </div>
+
+        <div className="card" style={{ height: '100%', gridColumn: 'span 1' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Box size={20} />
+            Alternate Sender Address (ACT)
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem' }}>
+            If filled in, this address will replace the primary sender when the shipping destination state is <strong>ACT</strong>.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Sender Name</label>
+                <input type="text" value={altSenderName} onChange={e => setAltSenderName(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Full Name" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Business Name</label>
+                <input type="text" value={altSenderBusiness} onChange={e => setAltSenderBusiness(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Optional" />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Address Line 1</label>
+              <input type="text" value={altSenderAddress1} onChange={e => setAltSenderAddress1(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Street Address" />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Address Line 2</label>
+              <input type="text" value={altSenderAddress2} onChange={e => setAltSenderAddress2(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="Apartment, suite, etc." />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Suburb</label>
+                <input type="text" value={altSenderSuburb} onChange={e => setAltSenderSuburb(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>State</label>
+                <input type="text" value={altSenderState} onChange={e => setAltSenderState(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Postcode</label>
+                <input type="text" value={altSenderPostcode} onChange={e => setAltSenderPostcode(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Phone Number</label>
+                <input type="text" value={altSenderPhone} onChange={e => setAltSenderPhone(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Email Address</label>
+                <input type="email" value={altSenderEmail} onChange={e => setAltSenderEmail(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              </div>
+            </div>
+
+            <button 
+              onClick={handleSave}
+              style={{
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 20px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '8px',
+                transition: 'var(--transition)'
+              }}
+            >
+              {isSaved ? <CheckCircle size={18} /> : <Save size={18} />}
+              Save Alternate Sender
             </button>
           </div>
         </div>
