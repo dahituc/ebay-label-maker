@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, Download, FileText, CheckCircle, AlertCircle, RefreshCcw, ArrowRight, Settings, Printer, Trash2 } from 'lucide-react';
+import { Upload, Download, FileText, CheckCircle, AlertCircle, RefreshCcw, ArrowRight, Settings, Printer, Trash2, Edit2 } from 'lucide-react';
 import { db, getSetting } from '../db/database';
+import { validateAddresses } from '../services/addressValidator';
 
 const AUSPOST_HEADERS = [
   'Additional Label Information 1',
@@ -105,6 +106,9 @@ export default function EbayConverter() {
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [printedRowIds, setPrintedRowIds] = React.useState([]);
   const [activeLabelRow, setActiveLabelRow] = React.useState(null);
+  const [editingAddressRow, setEditingAddressRow] = React.useState(null);
+  const [editAddressData, setEditAddressData] = React.useState({});
+  const [isValidating, setIsValidating] = React.useState(false);
 
   const normalizeKey = (key) => {
     if (!key) return '';
@@ -201,6 +205,51 @@ export default function EbayConverter() {
 
   const closeLabelPanel = () => {
     setActiveLabelRow(null);
+  };
+
+  const openEditAddress = (row) => {
+    setEditingAddressRow(row);
+    setEditAddressData({
+      'Deliver To Name': row['Deliver To Name'] || '',
+      'Deliver To Address Line 1': row['Deliver To Address Line 1'] || '',
+      'Deliver To Address Line 2': row['Deliver To Address Line 2'] || '',
+      'Deliver To Suburb': row['Deliver To Suburb'] || '',
+      'Deliver To State': row['Deliver To State'] || '',
+      'Deliver To Postcode': row['Deliver To Postcode'] || '',
+    });
+  };
+
+  const handleEditAddressChange = (e) => {
+    setEditAddressData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const saveEditedAddress = async () => {
+    setIsValidating(true);
+    const addressPayload = [{
+      address1: editAddressData['Deliver To Address Line 1'],
+      address2: editAddressData['Deliver To Address Line 2'],
+      city: editAddressData['Deliver To Suburb'],
+      state: editAddressData['Deliver To State'],
+      postcode: editAddressData['Deliver To Postcode'],
+    }];
+    
+    const validationResults = await validateAddresses(addressPayload);
+    
+    const nextRows = previewData.map(row => {
+      if (row.rowId === editingAddressRow.rowId) {
+        return {
+          ...row,
+          ...editAddressData,
+          validationStatus: validationResults[0].status,
+          validationError: validationResults[0].error
+        };
+      }
+      return row;
+    });
+
+    await updatePreviewRows(nextRows);
+    setEditingAddressRow(null);
+    setIsValidating(false);
   };
 
   React.useEffect(() => {
@@ -347,7 +396,7 @@ export default function EbayConverter() {
 
     Papa.parse(uploadedFile, {
       header: true,
-      skipEmptyLines: true,
+      skipEmptyLines: 'greedy',
       delimiter: uploadedFile.name.endsWith('.txt') ? '\t' : ',',
       complete: (results) => {
         if (results.errors.length > 0) {
@@ -385,6 +434,10 @@ export default function EbayConverter() {
       data.forEach((row, index) => {
         const normalizedRow = normalizeRow(row);
         const sourceOrderNumber = resolveValue(normalizedRow, ['sales-record-number', 'order-number', 'order-id']);
+        const buyerName = getBuyerName(normalizedRow);
+        
+        if (!sourceOrderNumber && !buyerName) return;
+
         const key = sourceOrderNumber || `unknown-${index}`;
         
         if (!groupedOrders.has(key)) {
@@ -473,9 +526,25 @@ export default function EbayConverter() {
         setError('Mandatory fields are missing. Please check your settings and the uploaded file.');
       }
 
+      const addressPayload = ausPostRows.map(row => ({
+        address1: row['Deliver To Address Line 1'],
+        address2: row['Deliver To Address Line 2'],
+        city: row['Deliver To Suburb'],
+        state: row['Deliver To State'],
+        postcode: row['Deliver To Postcode']
+      }));
+
+      const validationResults = await validateAddresses(addressPayload);
+
+      const finalAusPostRows = ausPostRows.map((row, idx) => ({
+        ...row,
+        validationStatus: validationResults[idx].status,
+        validationError: validationResults[idx].error
+      }));
+
       const csv = Papa.unparse({
         fields: AUSPOST_HEADERS,
-        data: ausPostRows
+        data: finalAusPostRows
       }, {
         header: true
       });
@@ -485,12 +554,12 @@ export default function EbayConverter() {
       await db.ebay_conversions.clear();
       await db.ebay_conversions.add({
         filename: file.name,
-        data: ausPostRows,
+        data: finalAusPostRows,
         createdAt: new Date(),
         downloaded: false
       });
 
-      setPreviewData(ausPostRows);
+      setPreviewData(finalAusPostRows);
       setConvertedBlob(blob);
       setIsDone(true);
     } catch (err) {
@@ -602,43 +671,51 @@ export default function EbayConverter() {
               <CheckCircle size={24} color="var(--success)" />
               Conversion Preview
             </h2>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+               {previewData.some(r => r.validationStatus && r.validationStatus !== 'valid') && (
+                 <span style={{ color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 600 }}>
+                   Fix invalid addresses to download
+                 </span>
+               )}
                <button 
                 onClick={() => { setFile(null); setPreviewData(null); setHasDownloaded(false); setSelectedRows([]); setPrintedRowIds([]); setActiveLabelRow(null); db.ebay_conversions.clear(); }}
                 className="btn btn-secondary"
               >
                 Cancel
               </button>
-              <button onClick={handleDownload} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button 
+                onClick={handleDownload} 
+                className="btn btn-success" 
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: previewData.some(r => r.validationStatus && r.validationStatus !== 'valid') ? 0.5 : 1 }}
+                disabled={previewData.some(r => r.validationStatus && r.validationStatus !== 'valid')}
+              >
                 <Download size={18} />
                 Download CSV
               </button>
             </div>
           </div>
 
-          {hasDownloaded && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
-                <input type="checkbox" checked={selectedRows.length === previewData.length && previewData.length > 0} onChange={handleSelectAll} />
-                Select all
-              </label>
-              <button onClick={handleBulkDelete} disabled={selectedRows.length === 0} className="btn btn-secondary" style={{ minWidth: '170px' }}>
-                <Trash2 size={16} />
-                Delete selected ({selectedRows.length})
-              </button>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Printed labels: <strong>{printedRowIds.length}</strong>
-              </span>
-            </div>
-          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+              <input type="checkbox" checked={selectedRows.length === previewData.length && previewData.length > 0} onChange={handleSelectAll} />
+              Select all
+            </label>
+            <button onClick={handleBulkDelete} disabled={selectedRows.length === 0} className="btn btn-secondary" style={{ minWidth: '170px' }}>
+              <Trash2 size={16} />
+              Delete selected ({selectedRows.length})
+            </button>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+              Printed labels: <strong>{printedRowIds.length}</strong>
+            </span>
+          </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
             <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10 }}>
                   <tr>
-                    {hasDownloaded && <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)', width: '40px' }}></th>}
-                    {hasDownloaded && <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)' }}>Actions</th>}
+                    <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)', width: '40px' }}></th>
+                    <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)' }}>Actions</th>
                     <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)' }}>Reference</th>
                     <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)' }}>Deliver To</th>
                     <th style={{ padding: '14px 16px', borderBottom: '2px solid var(--border)' }}>Item Description</th>
@@ -652,35 +729,42 @@ export default function EbayConverter() {
                     const printed = printedRowIds.includes(row.rowId);
                     return (
                       <tr key={row.rowId || i} style={{ borderBottom: '1px solid var(--border)', background: printed ? 'rgba(220, 253, 220, 0.6)' : i % 2 === 0 ? 'transparent' : 'var(--bg-primary)' }}>
-                        {hasDownloaded && (
-                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                            <input type="checkbox" checked={selected} onChange={() => toggleRowSelection(row.rowId)} />
-                          </td>
-                        )}
-                        {hasDownloaded && (
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                            <button onClick={() => openLabelPanel(row)} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                              <Printer size={14} />
-                              Label
-                            </button>
-                            <button onClick={() => handleDeleteRow(row.rowId)} className="btn btn-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
-                            {printed && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.85rem', color: 'var(--success)' }}>
-                                <CheckCircle size={14} /> Printed
-                              </div>
-                            )}
-                          </td>
-                        )}
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <input type="checkbox" checked={selected} onChange={() => toggleRowSelection(row.rowId)} />
+                        </td>
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <button onClick={() => openEditAddress(row)} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px', marginRight: '8px' }}>
+                            <Edit2 size={14} />
+                            Edit
+                          </button>
+                          <button onClick={() => openLabelPanel(row)} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px', marginRight: '8px' }}>
+                            <Printer size={14} />
+                            Label
+                          </button>
+                          <button onClick={() => handleDeleteRow(row.rowId)} className="btn btn-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                          {printed && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.85rem', color: 'var(--success)' }}>
+                              <CheckCircle size={14} /> Printed
+                            </div>
+                          )}
+                        </td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <span style={{ fontWeight: 600 }}>{row.sourceOrderNumber || row.orderId || '—'}</span>
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{row.sourceRecipientName || '—'}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatAddress(row)}</td>
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {row.validationStatus && row.validationStatus !== 'valid' && (
+                              <AlertCircle size={14} color="var(--danger)" title={row.validationError || 'Invalid Address'} />
+                            )}
+                            <span title={formatAddress(row)}>{formatAddress(row)}</span>
+                          </div>
+                        </td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.itemDescription || '—'}</td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(row.items || []).map(item => `${item.customLabel || '—'}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).join(' | ')}</td>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatSendFrom(row)}</td>
@@ -695,6 +779,30 @@ export default function EbayConverter() {
                <span style={{ color: 'var(--text-secondary)' }}>Download completed: <strong>{hasDownloaded ? 'Yes' : 'No'}</strong></span>
             </div>
           </div>
+
+          {editingAddressRow && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 999, display: 'grid', placeItems: 'center', padding: '24px' }} onClick={() => setEditingAddressRow(null)}>
+              <div style={{ width: 'min(100%, 500px)', background: 'var(--bg-primary)', borderRadius: '18px', boxShadow: '0 24px 56px rgba(0,0,0,0.18)', border: '1px solid var(--border)', padding: '24px' }} onClick={(e) => e.stopPropagation()}>
+                <h3 style={{ margin: '0 0 16px' }}>Edit Address</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                  <input name="Deliver To Name" value={editAddressData['Deliver To Name']} onChange={handleEditAddressChange} placeholder="Name" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                  <input name="Deliver To Address Line 1" value={editAddressData['Deliver To Address Line 1']} onChange={handleEditAddressChange} placeholder="Address Line 1" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                  <input name="Deliver To Address Line 2" value={editAddressData['Deliver To Address Line 2']} onChange={handleEditAddressChange} placeholder="Address Line 2 (Optional)" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                  <input name="Deliver To Suburb" value={editAddressData['Deliver To Suburb']} onChange={handleEditAddressChange} placeholder="Suburb / City" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <input name="Deliver To State" value={editAddressData['Deliver To State']} onChange={handleEditAddressChange} placeholder="State (e.g. VIC)" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                    <input name="Deliver To Postcode" value={editAddressData['Deliver To Postcode']} onChange={handleEditAddressChange} placeholder="Postcode" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                  <button className="btn btn-secondary" onClick={() => setEditingAddressRow(null)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={saveEditedAddress} disabled={isValidating}>
+                    {isValidating ? 'Validating...' : 'Save & Revalidate'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeLabelRow && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 999, display: 'grid', placeItems: 'center', padding: '24px' }} onClick={closeLabelPanel}>
