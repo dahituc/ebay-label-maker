@@ -107,6 +107,7 @@ export default function AmazonConverter() {
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [printedRowIds, setPrintedRowIds] = React.useState([]);
   const [activeLabelRow, setActiveLabelRow] = React.useState(null);
+  const [showPhoneOnLabel, setShowPhoneOnLabel] = React.useState(false);
 
   const normalizeKey = (key) => {
     if (!key) return '';
@@ -236,15 +237,21 @@ export default function AmazonConverter() {
     setPrintedRowIds(prev => prev.includes(rowId) ? prev : [...prev, rowId]);
   };
 
-  const renderPrintLabelHtml = (row) => {
+  const renderPrintLabelHtml = (row, showPhone = false) => {
     const name = escapeHtml(row.sourceRecipientName || row.buyerName || 'Unknown');
     const orderNumber = escapeHtml(row.sourceOrderNumber || row.orderId || '');
     const phone = escapeHtml(row['Deliver To Phone Number'] || '');
+    const addr1 = row['Deliver To Address Line 1'];
+    const addr2 = row['Deliver To Address Line 2'];
+    const suburb = row['Deliver To Suburb'];
+    const state = row['Deliver To State'];
+    const postcode = row['Deliver To Postcode'];
+    const line2Parts = [addr2 ? addr2 : '', suburb, state, postcode].filter(Boolean);
+    const line2 = line2Parts.join(' ');
     const addressLines = [
-      row['Deliver To Address Line 1'],
-      row['Deliver To Address Line 2'],
-      row['Deliver To Suburb'] ? `${row['Deliver To Suburb']} ${row['Deliver To State']} ${row['Deliver To Postcode']}`.trim() : ''
-    ].filter(Boolean).map(line => `<span class="label-address">${escapeHtml(line)}</span>`).join('');
+      addr1 ? `<span class="label-address">${escapeHtml(addr1)},</span>` : '',
+      line2 ? `<span class="label-address">${escapeHtml(line2)}</span>` : ''
+    ].filter(Boolean).join('');
 
     const itemLines = (row.items || []).map((item, idx) => {
       const label = escapeHtml(item.customLabel || item.sku || item.productName || 'Item');
@@ -260,7 +267,7 @@ export default function AmazonConverter() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start; gap: 8px;">
           <strong class="label-name">
             ${name} <span class="label-orderID">(${orderNumber})</span>
-            ${phone ? `<span class="label-phone" style="display:block;font-size:11px;font-weight:400;color:#444;margin-top:2px;">${phone}</span>` : ''}
+            ${showPhone && phone ? `<span class="label-phone" style="display:block;font-size:11px;font-weight:400;color:#444;margin-top:2px;">${phone}</span>` : ''}
           </strong>
         </div>
         <div class="label-address-container" style="display:flex;flex-direction:column;position:relative;">
@@ -275,7 +282,7 @@ export default function AmazonConverter() {
     `;
   };
 
-  const handlePrintLabel = (row) => {
+  const handlePrintLabel = (row, showPhone = false) => {
     if (!row) return;
     const style = `
       body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -291,7 +298,7 @@ export default function AmazonConverter() {
     `;
     const printWindow = window.open('', '_blank', 'width=500,height=600');
     if (!printWindow) return;
-    printWindow.document.write(`<!doctype html><html><head><title>Print Label</title><style>${style}</style></head><body>${renderPrintLabelHtml(row)}</body></html>`);
+    printWindow.document.write(`<!doctype html><html><head><title>Print Label</title><style>${style}</style></head><body>${renderPrintLabelHtml(row, showPhone)}</body></html>`);
     printWindow.document.close();
     printWindow.onload = () => {
       printWindow.focus();
@@ -695,9 +702,20 @@ export default function AmazonConverter() {
                       Order: <strong>{activeLabelRow.sourceOrderNumber || activeLabelRow.orderId || '—'}</strong> • Buyer: <strong>{activeLabelRow.sourceRecipientName || activeLabelRow.buyerName || '—'}</strong>
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {activeLabelRow['Deliver To Phone Number'] && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={showPhoneOnLabel}
+                          onChange={(e) => setShowPhoneOnLabel(e.target.checked)}
+                          style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+                        />
+                        Show phone on label
+                      </label>
+                    )}
                     <button className="btn btn-secondary" onClick={closeLabelPanel}>Close</button>
-                    <button className="btn btn-primary" onClick={() => handlePrintLabel(activeLabelRow)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <button className="btn btn-primary" onClick={() => handlePrintLabel(activeLabelRow, showPhoneOnLabel)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <Printer size={16} /> Print Label
                     </button>
                   </div>
@@ -737,10 +755,18 @@ export default function AmazonConverter() {
                         <span className="label-to">To</span>
                         <strong className="label-name">
                           {activeLabelRow.sourceRecipientName || activeLabelRow.buyerName || 'Unknown'} <span className="label-orderID">({activeLabelRow.sourceOrderNumber || activeLabelRow.orderId || '—'})</span>
+                          {showPhoneOnLabel && activeLabelRow['Deliver To Phone Number'] && (
+                            <span className="label-phone" style={{ display: 'block', fontSize: '11px', fontWeight: 'normal', color: 'var(--text-primary)' }}>
+                              {activeLabelRow['Deliver To Phone Number']}
+                            </span>
+                          )}
                         </strong>
-                        <span className="label-address">{activeLabelRow['Deliver To Address Line 1']}</span>
-                        {activeLabelRow['Deliver To Address Line 2'] && <span className="label-address">{activeLabelRow['Deliver To Address Line 2']}</span>}
-                        <span className="label-address">{activeLabelRow['Deliver To Suburb']} {activeLabelRow['Deliver To State']} {activeLabelRow['Deliver To Postcode']}</span>
+                        <div className="label-address-container">
+                          <span className="label-address">{activeLabelRow['Deliver To Address Line 1']},</span>
+                          <span className="label-address">
+                            {[activeLabelRow['Deliver To Address Line 2'], activeLabelRow['Deliver To Suburb'], activeLabelRow['Deliver To State'], activeLabelRow['Deliver To Postcode']].filter(Boolean).join(' ')}
+                          </span>
+                        </div>
                         <div style={{ flex: 1 }}></div>
                         <div className="label-sku">
                           {(activeLabelRow.items || []).map((item, idx) => (
