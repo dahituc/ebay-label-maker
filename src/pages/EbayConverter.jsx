@@ -140,7 +140,7 @@ export default function EbayConverter() {
   const buildItemDescription = (items) => {
     const totalQty = (items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const desc = (items || []).map(item => `${item.customLabel || item.productName || ''}${item.quantity > 1 ? ` x${item.quantity}` : ''}`).filter(Boolean).join(' | ');
-    return totalQty > 0 ? `Qty:${totalQty} ${desc}` : desc;
+    return items.length > 1 ? `Total Items: ${items.length} + Qty :${totalQty}` : desc;
   };
   const createRowId = (prefix, index) => `${prefix || 'ebay'}-${index}-${Date.now()}`;
 
@@ -233,9 +233,9 @@ export default function EbayConverter() {
       state: editAddressData['Deliver To State'],
       postcode: editAddressData['Deliver To Postcode'],
     }];
-    
+
     const validationResults = await validateAddresses(addressPayload);
-    
+
     const nextRows = previewData.map(row => {
       if (row.rowId === editingAddressRow.rowId) {
         return {
@@ -454,11 +454,11 @@ export default function EbayConverter() {
         const normalizedRow = normalizeRow(row);
         const sourceOrderNumber = resolveValue(normalizedRow, ['order-number', 'sales-record-number', 'order-id']);
         const buyerName = getBuyerName(normalizedRow);
-        
+
         if (!sourceOrderNumber && !buyerName) return;
 
         const key = sourceOrderNumber || `unknown-${index}`;
-        
+
         if (!groupedOrders.has(key)) {
           groupedOrders.set(key, {
             originalRow: row,
@@ -466,7 +466,7 @@ export default function EbayConverter() {
             items: []
           });
         }
-        
+
         const quantity = getItemQuantity(normalizedRow);
         const customLabel = resolveValue(normalizedRow, ['product-name', 'sku', 'custom-label', 'item-title', 'item-name']) || '';
         groupedOrders.get(key).items.push({ customLabel, quantity });
@@ -504,11 +504,11 @@ export default function EbayConverter() {
         ausPostRow['Deliver To Name'] = (ausPostRow['Deliver To Name'] || '').substring(0, 35);
         ausPostRow['Deliver To Address Line 1'] = (ausPostRow['Deliver To Address Line 1'] || '').substring(0, 40);
         ausPostRow['Deliver To Suburb'] = (ausPostRow['Deliver To Suburb'] || '').substring(0, 40);
-        
+
         // Normalize State
         const rawState = (ausPostRow['Deliver To State'] || '').toUpperCase().trim();
         ausPostRow['Deliver To State'] = STATE_ABBREVIATIONS[rawState] || rawState.substring(0, 3);
-        
+
         ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
         ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
 
@@ -578,7 +578,7 @@ export default function EbayConverter() {
         header: true
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      
+
       // Save to DB
       await db.ebay_conversions.clear();
       await db.ebay_conversions.add({
@@ -664,9 +664,9 @@ export default function EbayConverter() {
               <h3 style={{ marginBottom: '8px' }}>Select Ebay TXT or CSV File</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Drop your file here or click to browse</p>
             </div>
-            <input 
-              type="file" 
-              accept=".csv,.txt" 
+            <input
+              type="file"
+              accept=".csv,.txt"
               onChange={handleFileUpload}
               style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
             />
@@ -681,17 +681,17 @@ export default function EbayConverter() {
                   {previewData ? `${previewData.length} orders processed` : `${data.length} orders detected`}
                 </span>
               </div>
-              <button 
-                onClick={() => { setFile(null); setPreviewData(null); db.ebay_conversions.clear(); }} 
+              <button
+                onClick={() => { setFile(null); setPreviewData(null); db.ebay_conversions.clear(); }}
                 style={{ marginLeft: '12px', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
                 title="Clear and Upload New"
               >
                 <RefreshCcw size={18} />
               </button>
             </div>
-            
+
             {!isDone && (
-              <button 
+              <button
                 onClick={convertData}
                 disabled={isProcessing}
                 className="btn btn-primary"
@@ -728,29 +728,29 @@ export default function EbayConverter() {
               Conversion Preview
             </h2>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-               {previewData.some(r => r.validationStatus !== 'valid') && (
-                 <span style={{ color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 600 }}>
-                   {previewData.some(r => !r.validationStatus) ? 'Validate addresses before downloading' : 'Fix invalid addresses to download'}
-                 </span>
-               )}
-               <button 
-                 onClick={validateBulkAddresses} 
-                 className="btn btn-primary" 
-                 disabled={isValidating || previewData.length === 0}
-                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-               >
-                 {isValidating ? <RefreshCcw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                 {isValidating ? 'Validating...' : 'Validate Addresses'}
-               </button>
-               <button 
+              {previewData.some(r => r.validationStatus !== 'valid') && (
+                <span style={{ color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 600 }}>
+                  {previewData.some(r => !r.validationStatus) ? 'Validate addresses before downloading' : 'Fix invalid addresses to download'}
+                </span>
+              )}
+              <button
+                onClick={validateBulkAddresses}
+                className="btn btn-primary"
+                disabled={isValidating || previewData.length === 0}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                {isValidating ? <RefreshCcw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                {isValidating ? 'Validating...' : 'Validate Addresses'}
+              </button>
+              <button
                 onClick={() => { setFile(null); setPreviewData(null); setHasDownloaded(false); setSelectedRows([]); setPrintedRowIds([]); setActiveLabelRow(null); db.ebay_conversions.clear(); }}
                 className="btn btn-secondary"
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleDownload} 
-                className="btn btn-success" 
+              <button
+                onClick={handleDownload}
+                className="btn btn-success"
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: previewData.some(r => r.validationStatus !== 'valid') ? 0.5 : 1 }}
                 disabled={previewData.some(r => r.validationStatus !== 'valid')}
               >
@@ -854,8 +854,8 @@ export default function EbayConverter() {
               </table>
             </div>
             <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', fontSize: '0.85rem' }}>
-               <span style={{ color: 'var(--text-secondary)' }}>Total Orders: <strong>{previewData.length}</strong></span>
-               <span style={{ color: 'var(--text-secondary)' }}>Download completed: <strong>{hasDownloaded ? 'Yes' : 'No'}</strong></span>
+              <span style={{ color: 'var(--text-secondary)' }}>Total Orders: <strong>{previewData.length}</strong></span>
+              <span style={{ color: 'var(--text-secondary)' }}>Download completed: <strong>{hasDownloaded ? 'Yes' : 'No'}</strong></span>
             </div>
           </div>
 
