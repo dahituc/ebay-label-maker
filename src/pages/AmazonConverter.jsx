@@ -107,7 +107,7 @@ export default function AmazonConverter() {
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [printedRowIds, setPrintedRowIds] = React.useState([]);
   const [activeLabelRow, setActiveLabelRow] = React.useState(null);
-  const [showPhoneOnLabel, setShowPhoneOnLabel] = React.useState(false);
+  const [showPhoneOnLabel, setShowPhoneOnLabel] = React.useState(true);
 
   const normalizeKey = (key) => {
     if (!key) return '';
@@ -416,7 +416,7 @@ export default function AmazonConverter() {
         });
 
         const quantity = getItemQuantity(normalizedRow);
-        const customLabel = resolveValue(normalizedRow, ['product-name', 'sku', 'custom-label',  'item-title', 'item-name']) || '';
+        const customLabel = resolveValue(normalizedRow, ['product-name', 'sku', 'custom-label', 'item-title', 'item-name']) || '';
         const items = [{ customLabel, quantity }];
         const itemDescription = customLabel.substring(0, 50);
         const sourceOrderNumber = resolveValue(normalizedRow, ['order-number', 'amazon-order-number', 'order-id']);
@@ -436,11 +436,11 @@ export default function AmazonConverter() {
         ausPostRow['Deliver To Name'] = (ausPostRow['Deliver To Name'] || '').substring(0, 35);
         ausPostRow['Deliver To Address Line 1'] = (ausPostRow['Deliver To Address Line 1'] || '').substring(0, 40);
         ausPostRow['Deliver To Suburb'] = (ausPostRow['Deliver To Suburb'] || '').substring(0, 40);
-        
+
         // Normalize State
         const rawState = (ausPostRow['Deliver To State'] || '').toUpperCase().trim();
         ausPostRow['Deliver To State'] = STATE_ABBREVIATIONS[rawState] || rawState.substring(0, 3);
-        
+
         ausPostRow['Deliver To Postcode'] = (ausPostRow['Deliver To Postcode'] || '').substring(0, 4);
         ausPostRow['Deliver To Email Address'] = (ausPostRow['Deliver To Email Address'] || '').substring(0, 50);
 
@@ -501,7 +501,7 @@ export default function AmazonConverter() {
         header: true
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      
+
       // Save to DB
       await db.amazon_conversions.clear();
       await db.amazon_conversions.add({
@@ -560,9 +560,9 @@ export default function AmazonConverter() {
               <h3 style={{ marginBottom: '8px' }}>Select Amazon TXT or CSV File</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Drop your file here or click to browse</p>
             </div>
-            <input 
-              type="file" 
-              accept=".csv,.txt" 
+            <input
+              type="file"
+              accept=".csv,.txt"
               onChange={handleFileUpload}
               style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
             />
@@ -577,17 +577,17 @@ export default function AmazonConverter() {
                   {previewData ? `${previewData.length} orders processed` : `${data.length} orders detected`}
                 </span>
               </div>
-              <button 
-                onClick={() => { setFile(null); setPreviewData(null); db.amazon_conversions.clear(); }} 
+              <button
+                onClick={() => { setFile(null); setPreviewData(null); db.amazon_conversions.clear(); }}
                 style={{ marginLeft: '12px', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
                 title="Clear and Upload New"
               >
                 <RefreshCcw size={18} />
               </button>
             </div>
-            
+
             {!isDone && (
-              <button 
+              <button
                 onClick={convertData}
                 disabled={isProcessing}
                 className="btn btn-primary"
@@ -624,7 +624,7 @@ export default function AmazonConverter() {
               Conversion Preview
             </h2>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-               <button 
+              <button
                 onClick={() => { setFile(null); setPreviewData(null); setHasDownloaded(false); setSelectedRows([]); setPrintedRowIds([]); setActiveLabelRow(null); db.amazon_conversions.clear(); }}
                 className="btn btn-secondary"
               >
@@ -712,8 +712,8 @@ export default function AmazonConverter() {
               </table>
             </div>
             <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', fontSize: '0.85rem' }}>
-               <span style={{ color: 'var(--text-secondary)' }}>Total Orders: <strong>{previewData.length}</strong></span>
-               <span style={{ color: 'var(--text-secondary)' }}>Download completed: <strong>{hasDownloaded ? 'Yes' : 'No'}</strong></span>
+              <span style={{ color: 'var(--text-secondary)' }}>Total Orders: <strong>{previewData.length}</strong></span>
+              <span style={{ color: 'var(--text-secondary)' }}>Download completed: <strong>{hasDownloaded ? 'Yes' : 'No'}</strong></span>
             </div>
           </div>
 
@@ -831,7 +831,7 @@ export default function AmazonConverter() {
           <div style={{ marginTop: '32px', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
             <h4 style={{ marginBottom: '12px', fontSize: '0.9rem' }}>Pro Tip: Missing Addresses</h4>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              Amazon often hides buyer addresses for <strong>Pending</strong> orders or <strong>FBA</strong> (Fulfilled by Amazon) orders. 
+              Amazon often hides buyer addresses for <strong>Pending</strong> orders or <strong>FBA</strong> (Fulfilled by Amazon) orders.
               Ensure you use a <strong>Merchant Fulfilled</strong> order report with <strong>Unshipped</strong> status to get full delivery details.
             </p>
           </div>

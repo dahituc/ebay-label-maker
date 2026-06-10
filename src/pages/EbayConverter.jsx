@@ -104,7 +104,7 @@ export default function EbayConverter() {
   const [selectedRows, setSelectedRows] = React.useState([]);
   const [printedRowIds, setPrintedRowIds] = React.useState([]);
   const [activeLabelRow, setActiveLabelRow] = React.useState(null);
-  const [showPhoneOnLabel, setShowPhoneOnLabel] = React.useState(false);
+  const [showPhoneOnLabel, setShowPhoneOnLabel] = React.useState(true);
   const [editingAddressRow, setEditingAddressRow] = React.useState(null);
   const [editAddressData, setEditAddressData] = React.useState({});
   const [isValidating, setIsValidating] = React.useState(false);
