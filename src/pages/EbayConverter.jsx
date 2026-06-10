@@ -730,7 +730,7 @@ export default function EbayConverter() {
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               {previewData.some(r => r.validationStatus !== 'valid') && (
                 <span style={{ color: 'var(--danger)', fontSize: '0.9rem', fontWeight: 600 }}>
-                  {previewData.some(r => !r.validationStatus) ? 'Validate addresses before downloading' : 'Fix invalid addresses to download'}
+                  {previewData.some(r => !r.validationStatus) ? 'Validate addresses ' : 'Fix invalid addresses to download'}
                 </span>
               )}
               <button
@@ -751,8 +751,8 @@ export default function EbayConverter() {
               <button
                 onClick={handleDownload}
                 className="btn btn-success"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: previewData.some(r => r.validationStatus !== 'valid') ? 0.5 : 1 }}
-                disabled={previewData.some(r => r.validationStatus !== 'valid')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              // disabled={previewData.some(r => r.validationStatus !== 'valid')}
               >
                 <Download size={18} />
                 Download CSV
