@@ -263,11 +263,13 @@ export default function AmazonConverter() {
 
     return `
       <div class="label-item">
-        <span class="label-to">To</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.2em;">
+          <span class="label-to">To</span>
+          ${showPhone && phone ? `<span class="label-phone" style="font-size:11px;font-weight:400;color:#444;">${phone}</span>` : ''}
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start; gap: 8px;">
           <strong class="label-name">
             ${name} <span class="label-orderID">(${orderNumber})</span>
-            ${showPhone && phone ? `<span class="label-phone" style="display:block;font-size:11px;font-weight:400;color:#444;margin-top:2px;">${phone}</span>` : ''}
           </strong>
         </div>
         <div class="label-address-container" style="display:flex;flex-direction:column;position:relative;">
@@ -777,14 +779,16 @@ export default function AmazonConverter() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ padding: '20px', borderRadius: '18px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', minHeight: '260px', display: 'flex', flexDirection: 'column' }}>
                       <div className="label-item" style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: '12px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-                        <span className="label-to">To</span>
-                        <strong className="label-name">
-                          {activeLabelRow.sourceRecipientName || activeLabelRow.buyerName || 'Unknown'} <span className="label-orderID">({activeLabelRow.sourceOrderNumber || activeLabelRow.orderId || '—'})</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2em' }}>
+                          <span className="label-to">To</span>
                           {showPhoneOnLabel && activeLabelRow['Deliver To Phone Number'] && (
-                            <span className="label-phone" style={{ display: 'block', fontSize: '11px', fontWeight: 'normal', color: 'var(--text-primary)' }}>
+                            <span className="label-phone" style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-primary)' }}>
                               {activeLabelRow['Deliver To Phone Number']}
                             </span>
                           )}
+                        </div>
+                        <strong className="label-name">
+                          {activeLabelRow.sourceRecipientName || activeLabelRow.buyerName || 'Unknown'} <span className="label-orderID">({activeLabelRow.sourceOrderNumber || activeLabelRow.orderId || '—'})</span>
                         </strong>
                         <div className="label-address-container">
                           <span className="label-address">{activeLabelRow['Deliver To Address Line 1']},</span>
