@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, RefreshCcw, ArrowRight, Settings, Printer, Trash2, Edit2 } from 'lucide-react';
 import { db, getSetting } from '../db/database';
 import { validateAddresses } from '../services/addressValidator';
+import { formatAddress, formatSendFrom, handlePrintLabel } from '../utils/labelPrinter';
 
 const AUSPOST_HEADERS = [
   'Additional Label Information 1',
@@ -160,24 +161,6 @@ export default function EbayConverter() {
     await persistConversion(rows);
   };
 
-  const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-  const formatAddress = (row) => [
-    row['Deliver To Address Line 1'],
-    row['Deliver To Address Line 2'],
-    row['Deliver To Suburb'],
-    row['Deliver To State'],
-    row['Deliver To Postcode']
-  ].filter(Boolean).join(', ');
-
-  const formatSendFrom = (row) => [
-    row['Send From Name'],
-    row['Send From Business Name'],
-    row['Send From Address Line 1'],
-    row['Send From Suburb'],
-    row['Send From State'],
-    row['Send From Postcode']
-  ].filter(Boolean).join(', ');
 
   const handleDeleteRow = async (rowId) => {
     const remaining = previewData.filter(row => row.rowId !== rowId);
@@ -284,82 +267,6 @@ export default function EbayConverter() {
     setPrintedRowIds(prev => prev.includes(rowId) ? prev : [...prev, rowId]);
   };
 
-  const renderPrintLabelHtml = (row, showPhone = false) => {
-    const name = escapeHtml(row.sourceRecipientName || row.buyerName || 'Unknown');
-    const orderNumber = escapeHtml(row.sourceOrderNumber || row.orderId || '');
-    const phone = escapeHtml(row['Deliver To Phone Number'] || '');
-    const addr1 = row['Deliver To Address Line 1'];
-    const addr2 = row['Deliver To Address Line 2'];
-    const suburb = row['Deliver To Suburb'];
-    const state = row['Deliver To State'];
-    const postcode = row['Deliver To Postcode'];
-    const line2Parts = [addr2 ? addr2 : '', suburb, state, postcode].filter(Boolean);
-    const line2 = line2Parts.join(' ');
-    const addressLines = [
-      addr1 ? `<span class="label-address">${escapeHtml(addr1)},</span>` : '',
-      line2 ? `<span class="label-address">${escapeHtml(line2)}</span>` : ''
-    ].filter(Boolean).join('');
-
-    const itemLines = (row.items || []).map((item, idx) => {
-      const label = escapeHtml(item.customLabel || item.sku || item.productName || 'Item');
-      return `<div class="item-line">${label} X <b>${item.quantity}</b></div>`;
-    }).join('');
-
-    const totalQty = (row.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-    const totalLine = totalQty > 1 ? `<div class="item-line" style="font-weight:700;font-size:9px;color:#333;margin-bottom:2px;text-align:right;">TOTAL ITEMS: ${totalQty}</div>` : '';
-
-    return `
-      <div class="label-item">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.2em;">
-          <span class="label-to">To</span>
-          ${showPhone && phone ? `<span class="label-phone" style="font-size:11px;font-weight:400;color:#444;">${phone}</span>` : ''}
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start; gap: 8px;">
-          <strong class="label-name">
-            ${name} <span class="label-orderID">(${orderNumber})</span>
-          </strong>
-        </div>
-        <div class="label-address-container" style="display:flex;flex-direction:column;position:relative;">
-          ${addressLines}
-        </div>
-        <div style="flex:1;"></div>
-        <div class="label-sku">
-          ${totalLine}
-          ${itemLines}
-        </div>
-      </div>
-    `;
-  };
-
-  const handlePrintLabel = (row, showPhone = false) => {
-    if (!row) return;
-    const style = `
-      body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-      .label-item { width: 90mm; min-height: 30mm; border: 1px dashed #aaa; padding: 2mm 3mm; background: white; color: black; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }
-      .label-to { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #555; margin-bottom: 0.2em; }
-      .label-name { font-size: 15px; font-weight: 700; line-height: 1.25; display: inline-block; }
-      .label-orderID { font-size: 10px; font-weight: 400; display: inline-block; margin-left: 6px; }
-      .label-phone { font-size: 11px; font-weight: 400; color: #444; margin-top: 2px; display: block; }
-      .label-address { font-size: 13px; line-height: 1.25; white-space: break-spaces; display: block; overflow: hidden; }
-      .label-sku, .label-buyer-note { font-size: 9px; color: #555; text-align: right; line-height: 1.1; white-space: normal; word-break: break-word; }
-      .item-line { margin-bottom: 1px; }
-      .item-line > b { font-size: 12px; font-weight: 900; }
-    `;
-    const printWindow = window.open('', '_blank', 'width=500,height=600');
-    if (!printWindow) return;
-    printWindow.document.write(`<!doctype html><html><head><title>Print Label</title><style>${style}</style></head><body>${renderPrintLabelHtml(row, showPhone)}</body></html>`);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      if ('onafterprint' in printWindow) {
-        printWindow.onafterprint = () => printWindow.close();
-      } else {
-        setTimeout(() => printWindow.close(), 500);
-      }
-    };
-    markRowPrinted(row.rowId);
-  };
 
   // Load existing conversion from DB on mount
   React.useEffect(() => {
@@ -403,18 +310,67 @@ export default function EbayConverter() {
     setError(null);
     setMissingFields([]);
 
-    Papa.parse(uploadedFile, {
-      header: true,
-      skipEmptyLines: 'greedy',
-      delimiter: uploadedFile.name.endsWith('.txt') ? '\t' : ',',
-      complete: (results) => {
-        if (results.errors.length > 0) {
-          setError('Failed to parse file.');
-          return;
+    const delimiter = uploadedFile.name.endsWith('.txt') ? '\t' : ',';
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split(/\r?\n/);
+
+      const isEmptyLine = (line) => {
+        if (!line) return true;
+        const trimmed = line.trim();
+        if (trimmed === '') return true;
+        const clean = trimmed.replace(new RegExp(`[\\s"${delimiter === '\t' ? '\\t' : ','}]`, 'g'), '');
+        return clean === '';
+      };
+
+      // Find first empty line after header (line index 0 is header)
+      let firstEmptyIndex = -1;
+      for (let i = 1; i < lines.length; i++) {
+        if (isEmptyLine(lines[i])) {
+          firstEmptyIndex = i;
+          break;
         }
-        setData(results.data);
       }
-    });
+
+      // Find second empty line after the first empty line
+      let secondEmptyIndex = -1;
+      if (firstEmptyIndex !== -1) {
+        for (let i = firstEmptyIndex + 1; i < lines.length; i++) {
+          if (isEmptyLine(lines[i])) {
+            secondEmptyIndex = i;
+            break;
+          }
+        }
+      }
+
+      let parsedText = text;
+      if (firstEmptyIndex !== -1 && secondEmptyIndex !== -1) {
+        const headerLine = lines[0];
+        const dataLines = lines.slice(firstEmptyIndex + 1, secondEmptyIndex);
+        parsedText = [headerLine, ...dataLines].join('\n');
+      } else if (firstEmptyIndex !== -1) {
+        const headerLine = lines[0];
+        const dataLines = lines.slice(firstEmptyIndex + 1);
+        parsedText = [headerLine, ...dataLines].join('\n');
+      }
+
+      Papa.parse(parsedText, {
+        header: true,
+        skipEmptyLines: 'greedy',
+        delimiter: delimiter,
+        complete: (results) => {
+          if (results.errors.length > 0) {
+            setError('Failed to parse file.');
+            return;
+          }
+          setData(results.data);
+        }
+      });
+    };
+
+    reader.readAsText(uploadedFile);
   };
 
   const convertData = async () => {
@@ -908,7 +864,7 @@ export default function EbayConverter() {
                       </label>
                     )}
                     <button className="btn btn-secondary" onClick={closeLabelPanel}>Close</button>
-                    <button className="btn btn-primary" onClick={() => handlePrintLabel(activeLabelRow, showPhoneOnLabel)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <button className="btn btn-primary" onClick={() => handlePrintLabel(activeLabelRow, showPhoneOnLabel, markRowPrinted)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <Printer size={16} /> Print Label
                     </button>
                   </div>
