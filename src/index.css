@@ -706,19 +706,8 @@ h2 {
   }
 }
 
-/* Print Overrides for 90x30 thermal layout */
+/* Generic print overrides — hides app chrome if the user triggers browser print on any page */
 @media print {
-  @page {
-    size: var(--label-width) var(--label-height);
-    margin: 0;
-  }
-
-  body {
-    background: white;
-    margin: 0;
-    padding: 0;
-  }
-
   .sidebar,
   .print-hide,
   .address-toggle-btn,
@@ -730,50 +719,5 @@ h2 {
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible;
-  }
-
-  .labels-page {
-    margin: 0;
-    padding: 0;
-  }
-
-  .labels-grid {
-    display: block;
-    gap: 0;
-  }
-
-  .label-item {
-    width: var(--label-width);
-    height: var(--label-height);
-    border: none;
-    padding: 2mm 3mm;
-    margin: 0;
-    background: transparent;
-    color: black;
-    border-radius: 0;
-    page-break-inside: avoid;
-  }
-
-  .label-item:not(:last-child) {
-    page-break-after: always;
-  }
-
-  .label-address.is-api {
-    color: black !important;
-    border: none !important;
-    padding-left: 0 !important;
-    font-style: normal !important;
-  }
-
-  .label-to {
-    color: #555;
-  }
-
-  .label-sku {
-    color: #333;
-  }
-
-  .label-conf {
-    display: none !important;
   }
 }

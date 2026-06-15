@@ -56,12 +56,14 @@ export const parseEbayCsv = (fileOrString) => {
                 postageService: item['Postage Service'] || '',
                 items: [],
                 buyerNote: item['Buyer Note'],
+                rawRows: []
                 // Single-row orders have the item on the same line as the address
                 // Multi-row orders have address on first line, items on subsequent lines
               });
             }
 
             const order = ordersMap.get(orderNum);
+            order.rawRows.push(item);
 
             // Sometimes the first row of a multi-item order has the postage service, we don't want to overwrite it with empty strings
             if (!order.postageService && item['Postage Service']) {
@@ -122,7 +124,8 @@ export const parseEbayCsv = (fileOrString) => {
                 manualFlag: true,
                 postageService: order.postageService,
                 buyerNote: order.buyerNote,
-                isExtra: false
+                isExtra: false,
+                rawRows: order.rawRows
               });
               continue;
             }
@@ -134,6 +137,7 @@ export const parseEbayCsv = (fileOrString) => {
               const existing = consolidatedMap.get(mergeKey);
               existing.orderNumbers.push(order.orderNumber);
               existing.combinedItems.push(...orderItems);
+              existing.rawRows.push(...order.rawRows);
               // Also merge buyer notes if they differ
               if (order.buyerNote && !existing.buyerNote.includes(order.buyerNote)) {
                 existing.buyerNote = existing.buyerNote ? `${existing.buyerNote} | ${order.buyerNote}` : order.buyerNote;
@@ -155,7 +159,8 @@ export const parseEbayCsv = (fileOrString) => {
                 postcode: order.postcode,
                 country: order.country,
                 combinedItems: [...orderItems],
-                buyerNote: order.buyerNote || ''
+                buyerNote: order.buyerNote || '',
+                rawRows: [...order.rawRows]
               });
             }
           }
@@ -176,7 +181,8 @@ export const parseEbayCsv = (fileOrString) => {
               items: merged.combinedItems,
               itemsSummary: merged.combinedItems.map(i => `${i.sku} X <b>${i.quantity}</b>`).join('<br/>'),
               buyerNote: merged.buyerNote,
-              isExtra: false
+              isExtra: false,
+              rawRows: merged.rawRows
             });
           }
 

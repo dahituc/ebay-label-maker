@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, RefreshCcw, ArrowRight, Settings, Printer, Trash2 } from 'lucide-react';
 import { db, getSetting } from '../db/database';
-import { formatAddress, formatSendFrom, handlePrintLabel } from '../utils/labelPrinter';
+import { formatAddress, formatSendFrom, handlePrintLabel, splitLabel, renderSingleLabelHtmlContent } from '../utils/labelPrinter';
 
 const AUSPOST_HEADERS = [
   'Additional Label Information 1',
@@ -394,7 +394,8 @@ export default function AmazonConverter() {
           sourceOrderNumber,
           sourceRecipientName,
           items,
-          itemDescription
+          itemDescription,
+          originalRows: [row]
         };
       });
 
@@ -683,34 +684,12 @@ export default function AmazonConverter() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ padding: '20px', borderRadius: '18px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', minHeight: '260px', display: 'flex', flexDirection: 'column' }}>
-                      <div className="label-item" style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: '12px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2em' }}>
-                          <span className="label-to">To</span>
-                          {showPhoneOnLabel && activeLabelRow['Deliver To Phone Number'] && (
-                            <span className="label-phone" style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-primary)' }}>
-                              {activeLabelRow['Deliver To Phone Number']}
-                            </span>
-                          )}
-                        </div>
-                        <strong className="label-name">
-                          {activeLabelRow.sourceRecipientName || activeLabelRow.buyerName || 'Unknown'} <span className="label-orderID">({activeLabelRow.sourceOrderNumber || activeLabelRow.orderId || '—'})</span>
-                        </strong>
-                        <div className="label-address-container">
-                          <span className="label-address">{activeLabelRow['Deliver To Address Line 1']},</span>
-                          <span className="label-address">
-                            {[activeLabelRow['Deliver To Address Line 2'], activeLabelRow['Deliver To Suburb'], activeLabelRow['Deliver To State'], activeLabelRow['Deliver To Postcode']].filter(Boolean).join(' ')}
-                          </span>
-                        </div>
-                        <div style={{ flex: 1 }}></div>
-                        <div className="label-sku">
-                          {(activeLabelRow.items || []).map((item, idx) => (
-                            <div key={idx} className="item-line">{item.customLabel || '—'} x <b>{item.quantity}</b></div>
-                          ))}
-                        </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
+                    {splitLabel(activeLabelRow, { showPhone: showPhoneOnLabel }).map((part, idx) => (
+                      <div key={idx} style={{ padding: '20px', borderRadius: '18px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+                        <div className="label-item" style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: '12px', background: 'var(--bg-primary)', color: 'var(--text-primary)', position: 'relative' }} dangerouslySetInnerHTML={{ __html: renderSingleLabelHtmlContent(part) }} />
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
