@@ -7,7 +7,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import PreviewDialog from '../components/PreviewDialog';
 
 const POPULAR_FONTS = [
-  'Arial', 'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 
+  'Arial', 'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat',
   'Oswald', 'Raleway', 'PT Sans', 'Ubuntu', 'Nunito'
 ];
 
@@ -20,7 +20,7 @@ export default function Settings() {
   const [useGeoApify, setUseGeoApify] = useState(true);
   const [labelWidth, setLabelWidth] = useState(90);
   const [labelHeight, setLabelHeight] = useState(30);
-  const [selectedFont, setSelectedFont] = useState('Arial');
+  const [selectedFont, setSelectedFont] = useState('Nunito');
   const [selectedPalette, setSelectedPalette] = useState('indigo');
   const [currentTheme, setCurrentTheme] = useState('light');
   const [fontSearch, setFontSearch] = useState('');
@@ -211,7 +211,7 @@ export default function Settings() {
       await saveSetting('label_font', selectedFont);
       await saveSetting('palette', selectedPalette);
       await saveSetting('theme', currentTheme);
-      
+
       // Save Sender Details
       await saveSetting('sender_name', senderName);
       await saveSetting('sender_business_name', senderBusiness);
@@ -238,14 +238,14 @@ export default function Settings() {
       await saveSetting('invoice_terms', invoiceTerms);
       await saveSetting('invoice_tax_rate', invoiceTaxRate.toString());
       await saveSetting('invoice_logo_url', invoiceLogoUrl);
-      
+
       // Update CSS variables immediately
       document.documentElement.style.setProperty('--label-width', `${labelWidth}mm`);
       document.documentElement.style.setProperty('--label-height', `${labelHeight}mm`);
       document.documentElement.setAttribute('data-palette', selectedPalette);
       document.documentElement.setAttribute('data-theme', currentTheme);
       applyLabelFont(selectedFont);
-      
+
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
@@ -299,7 +299,7 @@ export default function Settings() {
     }
   };
 
-  const filteredFonts = fontSearch.length > 1 
+  const filteredFonts = fontSearch.length > 1
     ? allFonts.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())).slice(0, 10)
     : [];
 
@@ -327,9 +327,9 @@ export default function Settings() {
         <p style={{ color: 'var(--text-secondary)' }}>Manage your application configuration and API quotas.</p>
       </div>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
         gap: '24px',
         alignItems: 'start'
       }}>
@@ -341,11 +341,11 @@ export default function Settings() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.95rem', lineHeight: 1.5 }}>
             Configure your Geoapify API key and monitor your daily batch processing limits.
           </p>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 id="useGeoApify"
                 checked={useGeoApify}
                 onChange={(e) => setUseGeoApify(e.target.checked)}
@@ -358,15 +358,15 @@ export default function Settings() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Geoapify API Key</label>
-              <input 
-                type="password" 
-                placeholder="Enter your API key" 
+              <input
+                type="password"
+                placeholder="Enter your API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 disabled={!useGeoApify}
-                style={{ 
-                  padding: '12px 14px', 
-                  borderRadius: 'var(--radius-sm)', 
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)',
                   backgroundColor: 'var(--bg-primary)',
                   color: 'var(--text-primary)',
@@ -375,7 +375,7 @@ export default function Settings() {
                   outline: 'none',
                   transition: 'var(--transition)',
                   opacity: useGeoApify ? 1 : 0.6
-                }} 
+                }}
               />
             </div>
 
@@ -388,16 +388,16 @@ export default function Settings() {
                 </span>
                 <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{usagePercentage.toFixed(0)}%</span>
               </div>
-              
+
               <div style={{ width: '100%', backgroundColor: 'var(--border)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ 
-                  width: `${usagePercentage}%`, 
-                  backgroundColor: getUsageColor(), 
+                <div style={{
+                  width: `${usagePercentage}%`,
+                  backgroundColor: getUsageColor(),
                   height: '100%',
-                  transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+                  transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }} />
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 <span>0</span>
                 <span>{dailyUsage.toLocaleString()} used</span>
@@ -405,8 +405,8 @@ export default function Settings() {
               </div>
             </div>
 
-            
-            <button 
+
+            <button
               onClick={handleSave}
               style={{
                 background: 'var(--accent)',
@@ -516,8 +516,8 @@ export default function Settings() {
                 </button>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleSave}
               style={{
                 background: 'var(--accent)',
@@ -548,42 +548,42 @@ export default function Settings() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
             Set the dimensions and typography for your thermal labels.
           </p>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Width (mm)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={labelWidth}
                 onChange={(e) => setLabelWidth(parseInt(e.target.value, 10) || 0)}
-                style={{ 
-                  padding: '12px 14px', 
-                  borderRadius: 'var(--radius-sm)', 
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)',
                   backgroundColor: 'var(--bg-primary)',
                   color: 'var(--text-primary)',
                   width: '100%',
                   fontSize: '1rem',
                   outline: 'none'
-                }} 
+                }}
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Label Height (mm)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={labelHeight}
                 onChange={(e) => setLabelHeight(parseInt(e.target.value, 10) || 0)}
-                style={{ 
-                  padding: '12px 14px', 
-                  borderRadius: 'var(--radius-sm)', 
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)',
                   backgroundColor: 'var(--bg-primary)',
                   color: 'var(--text-primary)',
                   width: '100%',
                   fontSize: '1rem',
                   outline: 'none'
-                }} 
+                }}
               />
             </div>
           </div>
@@ -620,12 +620,12 @@ export default function Settings() {
             <div style={{ position: 'relative', marginTop: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
                 <Search size={16} color="var(--text-secondary)" />
-                <input 
-                  type="text" 
-                  placeholder="Search all Google Fonts..." 
+                <input
+                  type="text"
+                  placeholder="Search all Google Fonts..."
                   value={fontSearch}
                   onChange={(e) => setFontSearch(e.target.value)}
-                  style={{ 
+                  style={{
                     border: 'none',
                     background: 'transparent',
                     color: 'var(--text-primary)',
@@ -637,30 +637,30 @@ export default function Settings() {
               </div>
 
               {filteredFonts.length > 0 && (
-                <div style={{ 
-                  position: 'absolute', 
-                  top: '100%', 
-                  left: 0, 
-                  right: 0, 
-                  zIndex: 10, 
-                  background: 'var(--bg-secondary)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: 'var(--radius-sm)', 
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 10,
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
                   marginTop: '4px',
                   boxShadow: 'var(--shadow-lg)',
                   maxHeight: '200px',
                   overflowY: 'auto'
                 }}>
                   {filteredFonts.map(font => (
-                    <div 
+                    <div
                       key={font}
                       onClick={() => {
                         setSelectedFont(font);
                         setFontSearch('');
                       }}
-                      style={{ 
-                        padding: '10px 16px', 
-                        cursor: 'pointer', 
+                      style={{
+                        padding: '10px 16px',
+                        cursor: 'pointer',
                         borderBottom: '1px solid var(--border)',
                         transition: 'var(--transition)',
                         fontFamily: `'${font}', sans-serif`
@@ -676,13 +676,13 @@ export default function Settings() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Selected:</span>
-               <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: `'${selectedFont}', sans-serif` }}>{selectedFont}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Selected:</span>
+              <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: `'${selectedFont}', sans-serif` }}>{selectedFont}</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button 
+            <button
               onClick={handleSave}
               style={{
                 background: 'var(--accent)',
@@ -702,7 +702,7 @@ export default function Settings() {
               {isSaved ? 'Saved Successfully' : 'Save Label Config'}
             </button>
 
-            <button 
+            <button
               onClick={() => setShowPreviewDialog(true)}
               style={{
                 background: 'var(--bg-primary)',
@@ -724,7 +724,7 @@ export default function Settings() {
               Preview Label
             </button>
 
-            <button 
+            <button
               onClick={handleResetLabelConfig}
               style={{
                 background: 'transparent',
@@ -811,7 +811,7 @@ export default function Settings() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleSave}
               style={{
                 background: 'var(--accent)',
@@ -891,7 +891,7 @@ export default function Settings() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleSave}
               style={{
                 background: 'var(--accent)',
@@ -942,7 +942,7 @@ export default function Settings() {
               <input type="text" value={invoiceLogoUrl} onChange={e => setInvoiceLogoUrl(e.target.value)} style={{ padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="https://example.com/logo.png" />
             </div>
           </div>
-          <button 
+          <button
             onClick={handleSave}
             style={{
               background: 'var(--accent)',
@@ -970,7 +970,7 @@ export default function Settings() {
               Danger Zone
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
-              Wipe all transaction data, including uploaded batches, orders, and processing history. 
+              Wipe all transaction data, including uploaded batches, orders, and processing history.
               Your <strong>API configuration</strong> and <strong>visual preferences</strong> will be automatically saved and preserved.
             </p>
 
@@ -1018,7 +1018,7 @@ export default function Settings() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => setShowResetDialog(true)}
               style={{
                 background: 'rgba(239, 68, 68, 0.1)',
@@ -1049,7 +1049,7 @@ export default function Settings() {
         )}
       </div>
 
-      <ConfirmDialog 
+      <ConfirmDialog
         isOpen={showResetDialog}
         onCancel={() => setShowResetDialog(false)}
         onConfirm={handleResetApp}
@@ -1060,7 +1060,7 @@ export default function Settings() {
         type="danger"
       />
 
-      <PreviewDialog 
+      <PreviewDialog
         isOpen={showPreviewDialog}
         onClose={() => setShowPreviewDialog(false)}
         selectedFont={selectedFont}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@1,14..32,100..900&family=Nunito:wght@1,200..1000&display=swap"');
 
 :root {
   /* Default Palette (Indigo) */
@@ -25,7 +25,7 @@
   --radius: 12px;
   --radius-sm: 8px;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --label-font: 'Arial', sans-serif;
+  --label-font: 'Nunito', sans-serif;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Label Dimensions */

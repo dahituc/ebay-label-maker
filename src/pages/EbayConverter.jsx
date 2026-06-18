@@ -310,59 +310,80 @@ export default function EbayConverter() {
     setError(null);
     setMissingFields([]);
 
-    const delimiter = uploadedFile.name.endsWith('.txt') ? '\t' : ',';
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target.result;
       const lines = text.split(/\r?\n/);
 
-      const isEmptyLine = (line) => {
-        if (!line) return true;
-        const trimmed = line.trim();
-        if (trimmed === '') return true;
-        const clean = trimmed.replace(new RegExp(`[\\s"${delimiter === '\t' ? '\\t' : ','}]`, 'g'), '');
-        return clean === '';
-      };
+      const HEADER_SENTINEL = 'Sales Record Number';
+      const FOOTER_SENTINEL = 'record(s) downloaded';
 
-      // Find first empty line after header (line index 0 is header)
-      let firstEmptyIndex = -1;
-      for (let i = 1; i < lines.length; i++) {
-        if (isEmptyLine(lines[i])) {
-          firstEmptyIndex = i;
+      // Helper: split a raw line into cells, stripping surrounding quotes.
+      const splitCells = (line) =>
+        line.split(/\t|,/).map(cell => cell.replace(/^[\"']|[\"']$/g, '').trim());
+
+      // Locate the header row: first cell must equal "Sales Record Number".
+      // Empty lines are ignored so leading eBay metadata is skipped automatically.
+      let headerIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i] || lines[i].trim() === '') continue; // skip empty lines
+        const firstCell = splitCells(lines[i])[0];
+        if (firstCell === HEADER_SENTINEL) {
+          headerIndex = i;
           break;
         }
       }
 
-      // Find second empty line after the first empty line
-      let secondEmptyIndex = -1;
-      if (firstEmptyIndex !== -1) {
-        for (let i = firstEmptyIndex + 1; i < lines.length; i++) {
-          if (isEmptyLine(lines[i])) {
-            secondEmptyIndex = i;
-            break;
-          }
-        }
+      if (headerIndex === -1) {
+        setError('Could not find the eBay header row ("Sales Record Number"). Please check your file.');
+        return;
       }
 
-      let parsedText = text;
-      if (firstEmptyIndex !== -1 && secondEmptyIndex !== -1) {
-        const headerLine = lines[0];
-        const dataLines = lines.slice(firstEmptyIndex + 1, secondEmptyIndex);
-        parsedText = [headerLine, ...dataLines].join('\n');
-      } else if (firstEmptyIndex !== -1) {
-        const headerLine = lines[0];
-        const dataLines = lines.slice(firstEmptyIndex + 1);
-        parsedText = [headerLine, ...dataLines].join('\n');
+      // Collect data rows after the header, stopping before:
+      //   • any empty line, OR
+      //   • any line whose second cell contains "record(s) downloaded" (eBay footer sentinel).
+      // Rows whose "Postage Service" value is "Local Pickup" or contains "International" are skipped.
+      const headerLine = lines[headerIndex];
+      const headerCells = splitCells(headerLine);
+      const postageServiceColIndex = headerCells.findIndex(
+        h => h.toLowerCase().replace(/\s+/g, ' ').trim() === 'postage service'
+      );
+
+      const dataLines = [];
+      for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Skip / stop on empty lines
+        if (!line || line.trim() === '') break;
+
+        const cells = splitCells(line);
+
+        // Stop when the second cell signals the eBay summary row
+        if (cells[1] && cells[1].toLowerCase().includes(FOOTER_SENTINEL)) break;
+
+        // Skip Local Pickup and International postage rows
+        if (postageServiceColIndex !== -1) {
+          const postageService = (cells[postageServiceColIndex] || '').trim();
+          if (
+            postageService.toLowerCase() === 'local pickup' ||
+            postageService.toLowerCase().includes('international')
+          ) continue;
+        }
+
+        dataLines.push(line);
       }
+
+      const parsedText = [headerLine, ...dataLines].join('\n');
 
       Papa.parse(parsedText, {
         header: true,
         skipEmptyLines: 'greedy',
-        delimiter: delimiter,
+        delimiter: '', // auto-detect: handles tab, comma, and other eBay export formats
         complete: (results) => {
           if (results.errors.length > 0) {
             setError('Failed to parse file.');
+            console.error({ errors: results.errors });
             return;
           }
           setData(results.data);

@@ -3,7 +3,7 @@
  * @param {string} fontName - The name of the Google Font to load.
  */
 export function loadGoogleFont(fontName) {
-  if (!fontName || fontName === 'Arial' || fontName === 'Helvetica' || fontName === 'sans-serif') {
+  if (!fontName || fontName === 'Nunito' || fontName === 'Helvetica' || fontName === 'sans-serif') {
     return;
   }
 
@@ -25,10 +25,10 @@ export function loadGoogleFont(fontName) {
  */
 export function applyLabelFont(fontName) {
   if (!fontName) return;
-  
+
   // Apply to CSS variable
   document.documentElement.style.setProperty('--label-font', `'${fontName}', sans-serif`);
-  
+
   // Load if it's a Google Font (assuming everything else is a system font)
   const systemFonts = ['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Trebuchet MS'];
   if (!systemFonts.includes(fontName)) {
