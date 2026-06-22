@@ -764,8 +764,8 @@ export default function AmazonConverter() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ padding: '20px', borderRadius: '18px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', minHeight: '260px', display: 'flex', flexDirection: 'column' }}>
-                      <div className="label-item" style={{ width: '100%', height: '100%', boxSizing: 'border-box', padding: '12px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                    <div style={{ padding: '20px', borderRadius: '18px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+                      <div className="label-item">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2em' }}>
                           <span className="label-to">To</span>
                           {showPhoneOnLabel && activeLabelRow['Deliver To Phone Number'] && (
